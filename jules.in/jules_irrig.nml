@@ -1,0 +1,9 @@
+&jules_irrig
+!!frac_irrig_all_tiles=.false.
+!!irr_crop=1
+!!irrigtiles=0
+l_irrig_dmd=.false.
+!!l_irrig_limit=.false.
+!!nirrtile=0
+!!set_irrfrac_on_irrtiles=.false.
+/

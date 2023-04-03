@@ -1,0 +1,794 @@
+!############################# Change Log ##################################
+! 5.0.0
+!
+!###########################################################################
+!  Copyright (C)  1990, 1995, 1999, 2000, 2003 - All Rights Reserved
+!  Regional Atmospheric Modeling System - RAMS
+!###########################################################################
+
+SUBROUTINE obs_isen (m1,m2,tsnd,psnd,zsnd,rsnd,usndz,vsndz  &
+                    ,zsndz,stlt,stln,topsnd,lpst,lzst  &
+                    ,obsu,obsv,obsp,obss,obsr,no,chstid)
+use isan_coms
+use rconstants
+
+implicit none
+integer :: m1,m2,no
+real :: tsnd(m1,m2),psnd(m1,m2),zsnd(m1,m2)  &
+         ,rsnd(m1,m2),stlt(m1),stln(m1),topsnd(m1),usndz(m1,m2)  &
+         ,vsndz(m1,m2),zsndz(m1,m2)  &
+         ,obsu(no,*),obsv(no,*),obsp(no,*),obss(no,*),obsr(no,*)
+integer, dimension(m1) :: lpst,lzst
+character(len=8), dimension(*) :: chstid
+
+real,dimension(maxlev) :: pk,pth,zi
+integer ns,lp,lz,k,lmbot,nglev,lmtop,l,lbchyd,lbc,lbcp
+real :: th,wt,pkn,syo,po,tho
+
+do ns=1,nsta
+   lp=lpst(ns)
+   lz=lzst(ns)
+
+   do k=1,nisn
+      obsp(ns,k)=1E30
+      obsr(ns,k)=1E30
+      obsu(ns,k)=1E30
+      obsv(ns,k)=1E30
+      obss(ns,k)=1E30
+   enddo
+
+   lmbot=0
+   nglev=0
+   do k=1,lp
+      pk(k)=1.e30
+      if(psnd(ns,k).lt.1.e29) pk(k)=psnd(ns,k)**rocp
+      pth(k)=1.e30
+      if(tsnd(ns,k).lt.1.e29.and.psnd(ns,k).lt.1.e29)  &
+           pth(k)=tsnd(ns,k)*(p00/psnd(ns,k))**rocp
+      if(pth(k).lt.1.e30.and.lmbot.eq.0) lmbot=k
+      if(pth(k).lt.1.e29) nglev=nglev+1
+   enddo
+   lmtop=0
+   do k=lp,1,-1
+      if(pth(k).lt.1.e30.and.lmtop.eq.0) lmtop=k
+   enddo
+   if(nglev.le.1) goto 600
+
+   l=2
+   do k=1,nisn
+      th=levth(k)
+
+      if(th.lt.pth(lmbot).or.th.gt.pth(lmtop)) then
+         obsp(ns,k)=1e30
+         obsr(ns,k)=1e30
+         goto 510
+      endif
+
+      511 if(th.ge.pth(l-1).and.th.lt.pth(l)) goto 515
+      l=l+1
+      if(l.gt.lp) goto 500
+      goto 511
+
+      515 continue
+      wt=(th-pth(l-1))/(pth(l)-pth(l-1))
+      pkn=(pk(l)-pk(l-1))*wt+pk(l-1)
+      obsp(ns,k)=pkn**cpor
+      if(rsnd(ns,l).lt.1e19.and.rsnd(ns,l-1).lt.1e19) then
+         obsr(ns,k)=rsnd(ns,l-1)+(rsnd(ns,l)-rsnd(ns,l-1))*wt
+      else
+         obsr(ns,k)=1e30
+      endif
+      510 continue
+   enddo
+   500 continue
+
+   ! Find a boundary condition as first level at or below 360K
+
+   lbchyd=360
+   do k=nisn,1,-1
+      !print*,'mjb p',k,ns,levth(k),lbchyd,obsp(ns,k)
+      if(levth(k).le.lbchyd.and.obsp(ns,k).lt.1e19) then
+         lbc=k
+         goto 52
+      endif
+   enddo
+   print*,'---Could not find 1st obs isentropic boundary level ',ns,' ',chstid(ns)
+   !stop 'obs_isen'
+   !MJW Seems like just set everything to missing and continue rather than stop
+   do k=1,nisn
+      obss(ns,k)=1.e30
+      obsu(ns,k)=1.e30
+      obsv(ns,k)=1.e30
+   enddo
+   cycle
+
+   52 continue
+
+   do k=lp,1,-1
+      if(pth(k).le.float(levth(lbc))) then
+         lbcp=k
+         goto 51
+      endif
+   enddo
+   print*,'---Could not find 2nd obs isentropic boundary level ',ns,' ',chstid(ns)
+   !stop 'obs_isen'
+   !MJW Seems like just set everything to missing and continue rather than stop
+   do k=1,nisn
+      obss(ns,k)=1.e30
+      obsu(ns,k)=1.e30
+      obsv(ns,k)=1.e30
+   enddo
+   cycle
+
+   51 continue
+   syo=cp*pth(lbcp)*pk(lbcp)/p00**rocp+g*zsnd(ns,lbcp)
+   obss(ns,lbc)=syo+cp*(pk(lbcp)+obsp(ns,lbc)**rocp)  &
+        *.5/p00**rocp *(levth(lbc)-pth(lbcp))
+   po=obsp(ns,lbc)
+   syo=obss(ns,lbc)
+   tho=levth(lbc)
+   do k=lbc+1,nisn
+      obss(ns,k)=1e30
+      if(obsp(ns,k).lt.1e19) then
+         obss(ns,k)=syo+cp*(po**rocp+obsp(ns,k)**rocp)  &
+              *.5/p00**rocp *(levth(k)-tho)
+         syo=obss(ns,k)
+         po=obsp(ns,k)
+         tho=levth(k)
+      endif
+   enddo
+
+   syo=obss(ns,lbc)
+   po=obsp(ns,lbc)
+   tho=levth(lbc)
+   do k=lbc-1,1,-1
+      obss(ns,k)=1e30
+      if(obsp(ns,k).lt.1e19) then
+         obss(ns,k)=syo+cp*(po**rocp+obsp(ns,k)**rocp)*.5  &
+              /p00**rocp*(levth(k)-tho)
+         syo=obss(ns,k)
+         po=obsp(ns,k)
+         tho=levth(k)
+      endif
+   enddo
+
+   do k=1,nisn
+      if(obss(ns,k).lt.1e19) then
+         zi(k)=(obss(ns,k)-cp*levth(k)*(obsp(ns,k)*p00i)**rocp)/g
+      else
+         zi(k)=1e30
+      endif
+   enddo
+
+   l=2
+   do k=1,nisn
+
+      if(lz==0 .or. zi(k) < zsndz(ns,1) .or. zi(k) > zsndz(ns,lz)) then
+         obsu(ns,k)=1e30
+         obsv(ns,k)=1e30
+         cycle
+      endif
+
+      611 if(zi(k).ge.zsndz(ns,l-1).and.zi(k).lt.zsndz(ns,l)) goto 615
+      l=l+1
+      if(l.gt.lz) goto 600
+      goto 611
+      615 continue
+      wt=(zi(k)-zsndz(ns,l-1))/(zsndz(ns,l)-zsndz(ns,l-1))
+      if(usndz(ns,l).lt.1e19.and.usndz(ns,l-1).lt.1e19  &
+           .and.vsndz(ns,l).lt.1e19.and.vsndz(ns,l-1).lt.1e19) then
+         obsu(ns,k)=usndz(ns,l-1)+(usndz(ns,l)-usndz(ns,l-1))*wt
+         obsv(ns,k)=vsndz(ns,l-1)+(vsndz(ns,l)-vsndz(ns,l-1))*wt
+      else
+         obsu(ns,k)=1e30
+         obsv(ns,k)=1e30
+      endif
+
+   enddo
+
+   600 continue
+
+enddo
+
+return
+end
+
+!***************************************************************************
+
+SUBROUTINE obs_sigz (m1,m2,tsnd,psnd,zsnd,rsnd,usndz,vsndz  &
+                    ,zsndz,stlt,stln,topsnd,lpst,lzst,sndtopg  &
+                    ,obsu,obsv,obsp,obst,obsr,no,ztop)
+use isan_coms
+use rconstants
+
+implicit none
+integer :: m1,m2,no,lpst(m1),lzst(m1)
+real ::   tsnd(m1,m2),psnd(m1,m2),zsnd(m1,m2)  &
+         ,rsnd(m1,m2),stlt(m1),stln(m1),topsnd(m1),usndz(m1,m2)  &
+         ,vsndz(m1,m2),zsndz(m1,m2),sndtopg(m1)  &
+         ,obsu(no,*),obsv(no,*),obsp(no,*),obst(no,*),obsr(no,*)
+
+real :: pk(maxlev),pth(maxlev),zi(maxlev),sigzr(maxsigz)  &
+         ,tsz(maxsigz),rsz(maxsigz),psz(maxsigz),sdat(2)
+
+integer :: ns,k,lmbot,lp,lz,nglev,lmtop,l,lbc,lbcp,kbcu
+real :: ztop,wt,bchyd,pio,zso,tho,rs
+
+
+do ns=1,nsta
+   lp=lpst(ns)
+   lz=lzst(ns)
+
+   !DO K=1,nsigz
+   !   print*,'mjb a5',ns,nsigz,k,zsnd(ns,k)
+   !enddo
+
+   ! Fill sigzr from interpolated grid topography height
+
+   DO K=1,nsigz
+      sigzr(K)=sndtopg(ns)+sigz(k)*(1.-sndtopg(ns)/ztop)
+   ENDDO
+
+   do k=1,nsigz
+      obsp(ns,k)=1E30
+      obsr(ns,k)=1E30
+      obst(ns,k)=1E30
+   enddo
+
+   lmbot=0
+   nglev=0
+   do k=1,lp
+      pk(k)=1.e30
+      if(psnd(ns,k).lt.1.e29) pk(k)=psnd(ns,k)**rocp
+      pth(k)=1.e30
+      if(tsnd(ns,k).lt.1.e29.and.psnd(ns,k).lt.1.e29)  &
+         pth(k)=tsnd(ns,k)*(p00/psnd(ns,k))**rocp
+      if(pth(k).lt.1.e30.and.lmbot.eq.0) lmbot=k
+      if(pth(k).lt.1.e29) nglev=nglev+1
+   enddo
+   lmtop=0
+   do k=lp,1,-1
+      if(pth(k).lt.1.e30.and.lmtop.eq.0) lmtop=k
+   enddo
+   if(nglev.le.1) goto 1000
+
+   l=2
+
+   !print*,'mjb a',ns,zsnd(ns,1)
+   do k=1,nsigz
+      if(sigzr(k).lt.zsnd(ns,1)) then
+         obst(ns,k)=pth(1)
+         obsr(ns,k)=rsnd(ns,1)
+         goto 510
+      endif
+      if(sigzr(k).gt.zsnd(ns,lp)) then
+         obst(ns,k)=1e30
+         obsr(ns,k)=1e30
+         goto 510
+      endif
+
+      511 if(sigzr(k).ge.zsnd(ns,l-1).and.sigzr(k).lt.zsnd(ns,l)) goto 515
+      l=l+1
+      if(l.gt.lp) goto 500
+      goto 511
+
+      515 continue
+      wt=(sigzr(k)-zsnd(ns,l-1))/(zsnd(ns,l)-zsnd(ns,l-1))
+      obst(ns,k)=(pth(l)-pth(l-1))*wt+pth(l-1)
+
+      if(rsnd(ns,l).lt.1e19.and.rsnd(ns,l-1).lt.1e19) then
+         obsr(ns,k)=rsnd(ns,l-1)+(rsnd(ns,l)-rsnd(ns,l-1))*wt
+      else
+         obsr(ns,k)=1e30
+      endif
+
+      510 continue
+      !print*,'mjb b',k,ns,lp,obst(ns,k),obsr(ns,k)
+   enddo
+   500 continue
+
+   ! Find a boundary condition as first level at or below 10000m
+
+   bchyd=10000.
+   do k=nsigz,1,-1
+      !print*,'mjb c',ns,k,sigzr(k),bchyd,obst(ns,k)
+      if(sigzr(k).le.bchyd.and.obst(ns,k).lt.1e19) then
+         lbc=k
+         goto 52
+      endif
+   enddo
+   print*,'---Could not find 1st obs sigma-z boundary level',ns
+   !stop 'obs_sigz'
+   !MJW Seems like just set everything to missing and continue rather than stop
+   do k=1,nsigz
+      obsp(ns,k)=1.e30
+      obst(ns,k)=1.e30
+      obsu(ns,k)=1.e30
+      obsv(ns,k)=1.e30
+   enddo
+   cycle
+   52 continue
+
+   do k=lp,1,-1
+      if(zsnd(ns,k).le.sigzr(lbc)) then
+         lbcp=k
+         goto 51
+      endif
+   enddo
+   print*,'---Could not find 2nd obs sigma-z boundary level',ns
+   !stop 'obs_sigz'
+   !MJW Seems like just set everything to missing and continue rather than stop
+   do k=1,nsigz
+      obsp(ns,k)=1.e30
+      obst(ns,k)=1.e30
+      obsu(ns,k)=1.e30
+      obsv(ns,k)=1.e30
+   enddo
+   cycle
+   51 continue
+
+   pio=cp*(psnd(ns,lbcp)/p00)**rocp
+   obsp(ns,lbc)=pio-(sigzr(lbc)-zsnd(ns,lbcp))*g/((pth(lbcp)+obst(ns,lbc))*.5)
+   pio=obsp(ns,lbc)
+   zso=sigzr(lbc)
+   tho=obst(ns,lbc)
+   do k=lbc+1,nsigz
+      obsp(ns,k)=1e30
+      if(obst(ns,k).lt.1e19) then
+         obsp(ns,k)=pio-(sigzr(k)-zso)*g/((obst(ns,k)+tho)*.5)
+         zso=sigzr(k)
+         pio=obsp(ns,k)
+         tho=obst(ns,k)
+      endif
+   enddo
+
+   zso=sigzr(lbc)
+   pio=obsp(ns,lbc)
+   tho=obst(ns,lbc)
+   do k=lbc-1,1,-1
+      obsp(ns,k)=1e30
+      if(obst(ns,k).lt.1e19) then
+         obsp(ns,k)=pio-(sigzr(k)-zso)*g/((obst(ns,k)+tho)*.5)
+         zso=sigzr(k)
+         pio=obsp(ns,k)
+         tho=obst(ns,k)
+      endif
+   enddo
+
+   ! Compute virtual temp
+
+   DO K=1,nsigz
+      IF(obsp(ns,K)+obst(ns,k).LT.1E19) THEN
+         tsz(k)=obst(ns,k)*obsp(ns,k)/cp
+         psz(K)=(obsp(ns,k)/cp)**cpor*p00
+         IF(obsr(ns,k).LT.1E19) THEN
+            rsz(k)=rs(psz(k),tsz(k))*obsr(ns,k)
+            tsz(k)=obst(ns,k)*(1.+.61*rsz(k))
+         else
+            tsz(k)=obst(ns,k)
+         endif
+      endif
+   enddo
+
+   ! Recompute pressure profile with virtual temp
+
+   do k=nsigz,1,-1
+      if(obsp(ns,k).lt.1e19) then
+         kbcu=k
+         goto 551
+      endif
+   enddo
+   print*, '---Could not find good obs sigma-z boundary level 3',ns
+   !stop 'obs_sigz'
+   !MJW Seems like just set everything to missing and continue rather than stop
+   do k=1,nsigz
+      obsp(ns,k)=1.e30
+      obst(ns,k)=1.e30
+      obsu(ns,k)=1.e30
+      obsv(ns,k)=1.e30
+   enddo
+   cycle
+   551 continue
+
+   zso=sigzr(kbcu)
+   pio=obsp(ns,kbcu)
+   tho=tsz(kbcu)
+   do k=kbcu-1,1,-1
+      obsp(ns,k)=1e30
+      if(obst(ns,k).lt.1e19) then
+         obsp(ns,k)=pio-(sigzr(k)-zso)*g/((tsz(k)+tho)*.5)
+         zso=sigzr(k)
+         pio=obsp(ns,k)
+         tho=tsz(k)
+      endif
+   enddo
+   do k=1,nsigz
+      if(obsp(ns,k).lt.1e19) obsp(ns,k)=(obsp(ns,k)/cp)**cpor*p00
+   enddo
+
+   ! Vertically interpolate winds in height
+
+   1000 continue
+
+   l=2
+   do k=1,nsigz
+
+      if(lz==0 .or. sigzr(k) < zsndz(ns,1) .or. sigzr(k) > zsndz(ns,lz)) then
+         obsu(ns,k)=1e30
+         obsv(ns,k)=1e30
+         cycle
+      endif
+
+      611 if(sigzr(k).ge.zsndz(ns,l-1).and.sigzr(k).lt.zsndz(ns,l)) goto 615
+      l=l+1
+      if(l.gt.lz) goto 600
+      goto 611
+      615 continue
+      wt=(sigzr(k)-zsndz(ns,l-1))/(zsndz(ns,l)-zsndz(ns,l-1))
+      if(usndz(ns,l).lt.1e19.and.usndz(ns,l-1).lt.1e19  &
+           .and.vsndz(ns,l).lt.1e19.and.vsndz(ns,l-1).lt.1e19) then
+         obsu(ns,k)=usndz(ns,l-1)+(usndz(ns,l)-usndz(ns,l-1))*wt
+         obsv(ns,k)=vsndz(ns,l-1)+(vsndz(ns,l)-vsndz(ns,l-1))*wt
+      else
+         obsu(ns,k)=1e30
+         obsv(ns,k)=1e30
+      endif
+
+   enddo
+
+   600 continue
+
+enddo
+
+return
+end
+!***************************************************************************
+
+subroutine vterpp_i (np1,np2,np3,npi3,un,vn,tn,zn,rn,ui2,vi2,pi2,si2,ri2)
+
+use isan_coms
+use rconstants
+
+implicit none
+integer :: np1,np2,np3,npi3
+real :: un(np1,np2,np3),vn(np1,np2,np3),tn(np1,np2,np3)  &
+         ,zn(np1,np2,np3),rn(np1,np2,np3)  &
+         ,ui2(np1,np2,npi3),vi2(np1,np2,npi3),pi2(np1,np2,npi3)  &
+         ,si2(np1,np2,npi3),ri2(np1,np2,npi3)
+
+integer, parameter :: npr=maxpr+2
+real :: ppd(npr),thd(npr),pkd(npr),ud(npr),vd(npr),zd(npr),rd(npr)
+
+integer :: i,j,k,mcnt,npd,lp,kpbc,kibc
+real :: thl,wt,pkn,pbc,sy
+
+do j=1,np2
+   do i=1,np1
+
+      DO K=1,NISN
+         UI2(I,J,K)=1.E30
+         VI2(I,J,K)=1.E30
+         RI2(I,J,K)=1.E30
+         PI2(I,J,K)=1.E30
+         SI2(I,J,K)=1.E30
+      ENDDO
+
+      ! determine if this column is all missing. if so, just leave
+      !   isentropic data as missing
+
+      mcnt=0
+      DO K=1,NPRZ
+         if(tn(i,j,k).gt.1000.) mcnt=mcnt+1
+      ENDDO
+      if(mcnt.eq.nprz) goto 4500
+
+      DO K=1,NPRZ
+         pnpr(k)=levpr(k)*100.
+         UD(K+2)=UN(I,J,K)
+         VD(K+2)=VN(I,J,K)
+         RD(K+2)=RN(I,J,K)
+         PPD(K+2)=PNPR(K)
+         THD(K+2)=TN(I,J,K)*(P00/PNPR(K))**ROCP
+      ENDDO
+
+      ! Define two phony levels for isentropes underground
+
+      UD(1)=UD(3)
+      UD(2)=UD(3)
+      VD(1)=VD(3)
+      VD(2)=VD(3)
+      RD(1)=RD(3)
+      RD(2)=RD(3)
+      PPD(1)=120000.
+      PPD(2)=110000.
+      THD(2)=(TN(I,J,1)-2.25)*(P00/PNPR(1))**ROCP
+      THD(1)=180.
+      npd=nprz+2
+      DO K=1,NPD
+         PKD(K)=PPD(K)**ROCP
+      ENDDO
+
+      lp = npd
+
+      do k = nisn,1,-1
+         35 continue
+         thl = levth(k)
+
+         if (thl .gt. thd(npd)) then
+
+            pi2(i,j,k) = (thd(npd) / thl) ** cpor * ppd(npd)
+            ui2(i,j,k) = ud(npd)
+            vi2(i,j,k) = vd(npd)
+            ri2(i,j,k) = 0.
+
+         elseif (thl .le. thd(lp) .and. thl .gt. thd(lp-1)) then
+
+            wt = (thl - thd(lp-1)) / (thd(lp) - thd(lp-1))
+            pkn = pkd(lp-1) + (pkd(lp) - pkd(lp-1)) * wt
+            pi2(i,j,k) = pkn ** cpor
+
+            ui2(i,j,k) = ud(lp-1) + (ud(lp) - ud(lp-1)) * wt
+            vi2(i,j,k) = vd(lp-1) + (vd(lp) - vd(lp-1)) * wt
+            ri2(i,j,k) = rd(lp-1) + (rd(lp) - rd(lp-1)) * wt
+
+         else
+
+            lp = lp - 1
+            if (lp .le. 1) then
+               print*, 'vterpp_i interpolation tried to go below'
+               print*, 'lowest pressure level.'
+               stop 'vterpp_i'
+            endif
+            goto 35
+
+         endif
+      enddo
+
+      ! Find a pressure b.c. as second isentrope above 400 mb
+
+      pbc=40000.
+      do k=1,npd
+         if(ppd(k).lt.pbc) then
+            kpbc=k
+            exit
+         endif
+      enddo
+
+      do k=2,nisn
+         if(pi2(i,j,k).lt.ppd(kpbc)) then
+            kibc=k
+            exit
+         endif
+      enddo
+
+      sy=cp*thd(kpbc)*pkd(kpbc)/p00k+g*zn(i,j,kpbc-2)
+
+      si2(i,j,kibc-1)=sy-cp*(pi2(i,j,kibc-1)**rocp  &
+           +ppd(kpbc)**rocp)/(2.*p00k)*(thd(kpbc)-levth(kibc-1))
+      do k=kibc-2,1,-1
+         si2(i,j,k)=si2(i,j,k+1)+cp*(pi2(i,j,k+1)**rocp  &
+              +pi2(i,j,k)**rocp)/(2.*p00k)  &
+              *(levth(k)-levth(k+1))
+      enddo
+
+      si2(i,j,kibc)=sy+cp*(pi2(i,j,kibc)**rocp  &
+           +ppd(kpbc)**rocp)/(2.*p00k)*(levth(kibc)-thd(kpbc))
+      do k=kibc+1,nisn
+         si2(i,j,k)=si2(i,j,k-1)+cp*(pi2(i,j,k-1)**rocp  &
+              +pi2(i,j,k)**rocp)/(2.*p00k)  &
+              *(levth(k)-levth(k-1))
+      enddo
+
+      4500 continue
+   enddo
+enddo
+
+! If any level is above 100 mb, compute geostrophic winds
+
+!GDKM=2.*SPCON
+!DO J=2,NP2-1
+!   GDLAT=(XSWLAT+(J-1)*GDATDY)*PI180
+!   FCORI=1./(2.*7.292E-5*SIN(GDLAT))
+!   DO I=2,NP1-1
+!      DO K=NISN,1,-1
+!         IF(PI2(I,J,K).LT.10000.) THEN
+!            UI2(I,J,K)=-FCORI*(SI2(I,J+1,K)-SI2(I,J-1,K))/(GDKM*GDATDY)
+!            VI2(I,J,K)= FCORI*(SI2(I+1,J,K)-SI2(I-1,J,K))  &
+!                 /(GDKM*GDATDX*COS(GDLAT))
+!         ENDIF
+!      ENDDO
+!   ENDDO
+!ENDDO
+
+return
+end
+
+!***************************************************************************
+
+subroutine vterpp_s (np1,np2,np3,npi3,un,vn,tn,zn,rn  &
+                    ,ui2,vi2,pi2,ti2,ri2,topt,rtgt)
+
+use isan_coms
+use rconstants
+use dump, only: &
+        dumpMessage
+
+implicit none
+include "constants.f90"
+integer :: np1,np2,np3,npi3
+real :: un(np1,np2,np3),vn(np1,np2,np3),tn(np1,np2,np3)  &
+         ,zn(np1,np2,np3),rn(np1,np2,np3)  &
+         ,ui2(np1,np2,npi3),vi2(np1,np2,npi3),pi2(np1,np2,npi3)  &
+         ,ti2(np1,np2,npi3),ri2(np1,np2,npi3)  &
+         ,topt(np1,np2),rtgt(np1,np2)
+
+integer, parameter :: npr=maxpr+2
+real :: ppd(npr),thetd(npr),pkd(npr),ud(npr),vd(npr),zd(npr)  &
+         ,rd(npr),pid(npr),tempd(npr),rtd(npr),thvd(npr)  &
+         ,sigzr(maxsigz),vvv(maxsigz)
+
+integer :: i,j,k,mcnt,npd,kl,kpbc,kibc
+real :: rs,pbc,thvp,pii
+character(len=2) :: clev
+character(len=*),parameter :: header='***(vterpp_s)***',version='5.4'
+integer :: ierr
+
+do j=1,np2
+   do i=1,np1
+
+      do k=1,npi3
+         ui2(i,j,k)=1.e30
+         vi2(i,j,k)=1.e30
+         ri2(i,j,k)=1.e30
+         pi2(i,j,k)=1.e30
+         ti2(i,j,k)=1.e30
+      enddo
+
+      ! determine if this column is all missing.
+      ! if so, just leave data as missing
+
+      mcnt=0
+      do k=1,nprz
+         if(tn(i,j,k).gt.1000.) mcnt=mcnt+1
+      enddo
+      if(mcnt.eq.nprz) goto 4500
+
+      do k=1,nprz
+         pnpr(k)=levpr(k)*100.
+         ud(k+2)=un(i,j,k)
+         vd(k+2)=vn(i,j,k)
+         rd(k+2)=rn(i,j,k)
+         ppd(k+2)=pnpr(k)
+         thetd(k+2)=tn(i,j,k)*(p00/pnpr(k))**rocp
+         zd(k+2)=zn(i,j,k)
+      enddo
+
+      ! define two phony levels for isentropes underground
+
+      ud(1)=ud(3)
+      ud(2)=ud(3)
+      vd(1)=vd(3)
+      vd(2)=vd(3)
+      rd(1)=rd(3)
+      rd(2)=rd(3)
+      ppd(1)=120000.
+      ppd(2)=110000.
+      thetd(2)=(tn(i,j,1)-2.25)*(p00/pnpr(1))**rocp
+      thetd(1)=220.
+      npd=nprz+2
+      do k=1,npd
+         pkd(k)=ppd(k)**rocp
+         pid(k)=cp*(ppd(k)/p00)**rocp
+         tempd(k)=thetd(k)*pid(k)/cp
+         rtd(k)=rd(k)*rs(ppd(k),tempd(k))
+         thvd(k)=thetd(k)*(1.+.61*rtd(k))
+      enddo
+
+      zd(2)=zd(3)+(thvd(3)+thvd(2))*.5*(pid(3)-pid(2))/g
+      zd(1)=zd(2)+(thvd(2)+thvd(1))*.5*(pid(2)-pid(1))/g
+
+      do k=1,npi3
+         sigzr(k)=topt(i,j)+sigz(k)*rtgt(i,j)
+      enddo
+      !U
+      call htint(npd,ud,zd,npi3,vvv,sigzr)
+      call psfill(npi3,vvv,ui2,np1,np2,i,j)
+      !V
+      call htint(npd,vd,zd,npi3,vvv,sigzr)
+      call psfill(npi3,vvv,vi2,np1,np2,i,j)
+      !T
+      call htint(npd,thetd,zd,npi3,vvv,sigzr)
+      call psfill(npi3,vvv,ti2,np1,np2,i,j)
+      !R
+      call htint(npd,rd,zd,npi3,vvv,sigzr)
+      call psfill(npi3,vvv,ri2,np1,np2,i,j)
+      !Z
+      call htint(npd,pid,zd,npi3,vvv,sigzr)
+      call psfill(npi3,vvv,pi2,np1,np2,i,j)
+
+      do k=1,npi3
+         pi2(i,j,k)=(pi2(i,j,k)/cp)**cpor*p00
+      enddo
+
+      do kl=npi3,1,-1
+         if(ti2(i,j,kl).lt.1e19) goto 402
+      enddo
+
+      iErrNumber=dumpMessage(c_tty,c_yes,header,modelVersion &
+              ,c_warning,'Temp from input (tn)=',tn(i,j,:),'E18.4')      
+      iErrNumber=dumpMessage(c_tty,c_yes,header,modelVersion &
+              ,c_fatal,'ST2-MISS! Temp interpolated =',ti2(i,j,:),'E18.4')
+
+      402 continue
+      kl=kl+1
+      do k=kl,npi3
+         ti2(i,j,k)=tempd(npd)*(p00/pi2(i,j,k))**rocp
+         ui2(i,j,k)=ud(npd)
+         vi2(i,j,k)=vd(npd)
+         ri2(i,j,k)=0.
+      enddo
+
+      ! Find a pressure b.c. as second level above 700 mb
+
+      pbc=70000.
+      DO K=1,npd
+         if(ppd(k).lt.pbc) then
+            kpbc=k
+            goto 320
+         endif
+      ENDDO
+      320 continue
+      DO K=2,npi3
+         if(ti2(i,j,k).gt.thetd(kpbc)) then
+            kibc=k
+            goto 321
+         endif
+      ENDDO
+
+      write(*,fmt='(A,4(I4.4,1X))') 'At position (i,j,npi3,kbpc):',i,j,npi3,kpbc
+      write(clev,fmt='(I2.2)') npi3
+      print*,'thetd,max(ti2):',thetd(kpbc),maxval(ti2(i,j,2:npi3))
+      write(*,fmt='('//clev//'(F6.2,1X))') ti2(i,j,1:npi3)
+      !call fatal_error('Chem_v_interps:  CHEM ISAN error: domain top not high enough')
+      iErrNumber=dumpMessage(c_tty,c_yes,header,version,c_fatal,'CHEM ISAN error: domain top not high enough')
+      321 continue
+
+      do k=1,npi3
+         vvv(k)=ti2(i,j,k)*(pi2(i,j,k)/p00)**rocp
+         vvv(k)=ti2(i,j,k)*(1.+.61*ri2(i,j,k)*rs(pi2(i,j,k),vvv(k)))
+      enddo
+      thvp=thetd(kpbc)*(1.+.61*rd(kpbc)*rs(ppd(kpbc),tempd(kpbc)))
+
+
+      pii=cp*pkd(kpbc)/p00**rocp
+      pi2(i,j,kibc-1)=pii+(zd(kpbc)-sigzr(kibc-1))*g/(.5*(thvp+vvv(kibc-1)))
+      do k=kibc-2,1,-1
+         pi2(i,j,k)=pi2(i,j,k+1)+(sigzr(k+1)-sigzr(k))*g/(.5*(vvv(k+1)+vvv(k)))
+      enddo
+
+      do k=kibc,npi3
+         pi2(i,j,k)=pi2(i,j,k-1)-(sigzr(k)-sigzr(k-1))*g/(.5*(vvv(k-1)+vvv(k)))
+      enddo
+      do k=1,npi3
+         pi2(i,j,k)=(pi2(i,j,k)/cp)**cpor*p00
+      enddo
+
+      4500 continue
+   ENDDO
+ENDDO
+
+end
+
+!***************************************************************************
+
+subroutine psfill(nz,vvv,aaa,np1,np2,i,j)
+implicit none
+integer :: nz,np1,np2,i,j,k
+real :: vvv(nz),aaa(np1,np2,nz)
+
+do k=1,nz
+   aaa(i,j,k)=vvv(k)
+enddo
+
+return
+end

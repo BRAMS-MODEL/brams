@@ -1,0 +1,812 @@
+###############################################################################
+## Build jobs
+###############################################################################
+# Linux gfortran build jobs
+    [[METO_LINUX_GFORTRAN_BUILD]]
+        inherit = METO_LINUX_BUILD
+        [[[environment]]]
+            JULES_PLATFORM = meto-linux-gfortran
+
+    [[fcm_make_meto_linux_gfortran_debug]]
+        inherit = METO_LINUX_GFORTRAN_BUILD
+        [[[environment]]]
+            JULES_BUILD = debug
+            JULES_OMP = noomp
+
+    [[fcm_make_meto_linux_gfortran_omp]]
+        inherit = METO_LINUX_GFORTRAN_BUILD
+        [[[environment]]]
+            JULES_BUILD = normal
+            JULES_OMP = omp
+
+###############################################################################
+## Compute jobs
+###############################################################################
+# Family for Loobos jobs with the gfortran compiler
+    [[METO_LINUX_GFORTRAN_LOOBOS]]
+        inherit = LOOBOS, METO_LINUX_COMPUTE, METO_LINUX_1_TASK, METO_LINUX_1_THREAD
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_linux_gfortran_debug
+
+    [[meto_linux_gfortran_loobos_gl7]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl7
+
+    [[meto_linux_gfortran_loobos_gl4]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl4
+
+    [[meto_linux_gfortran_loobos_gl4_cable]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl4
+            ROSE_APP_OPT_CONF_KEYS=cable
+
+    [[meto_linux_gfortran_loobos_gl8]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl8
+
+    [[meto_linux_gfortran_loobos_gl8_medlyn]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl8_medlyn
+
+    [[meto_linux_gfortran_loobos_vegdrag]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_vegdrag
+
+    [[meto_linux_gfortran_loobos_euro4]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_euro4
+
+    [[meto_linux_gfortran_loobos_forecast]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_forecast
+
+    [[meto_linux_gfortran_loobos_ukv]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_ukv
+
+    [[meto_linux_gfortran_loobos_trif_spinup]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_trif_spinup
+
+    [[meto_linux_gfortran_loobos_trif]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_trif
+            DUMP_FILE = ../meto_linux_gfortran_loobos_trif_spinup/output/meto_linux_gfortran_loobos_trif_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_julesc_spinup]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_julesc_spinup
+
+    [[meto_linux_gfortran_loobos_julesc]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_julesc
+            DUMP_FILE = ../meto_linux_gfortran_loobos_julesc_spinup/output/meto_linux_gfortran_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_jules_c1p1]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_c1p1
+            DUMP_FILE = ../meto_linux_gfortran_loobos_julesc_spinup/output/meto_linux_gfortran_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_jules_c1p1_fire]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_c1p1_fire
+            DUMP_FILE = ../meto_linux_gfortran_loobos_julesc_spinup/output/meto_linux_gfortran_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_jules_layeredcn_spinup]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_layeredcn_spinup
+
+    [[meto_linux_gfortran_loobos_jules_layeredcn]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_layeredcn
+            DUMP_FILE = ../meto_linux_gfortran_loobos_jules_layeredcn_spinup/output/meto_linux_gfortran_loobos_jules_layeredcn_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_jules_cn_spinup]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_cn_spinup
+
+    [[meto_linux_gfortran_loobos_jules_cn]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_cn
+            DUMP_FILE = ../meto_linux_gfortran_loobos_jules_cn_spinup/output/meto_linux_gfortran_loobos_jules_cn_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_jules_es_1p0_spinup]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_es_1p0_spinup
+
+    [[meto_linux_gfortran_loobos_jules_es_1p0]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_es_1p0
+            DUMP_FILE = ../meto_linux_gfortran_loobos_jules_es_1p0_spinup/output/meto_linux_gfortran_loobos_jules_es_1p0_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_crops]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crops
+
+    [[meto_linux_gfortran_loobos_prescribe_sthuf]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_prescribe_sthuf
+
+    [[meto_linux_gfortran_loobos_irrig]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_irrig
+
+    [[meto_linux_gfortran_loobos_irrig_nirrtile]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_irrig_nirrtile
+
+    [[meto_linux_gfortran_loobos_fire_spinup]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_fire_spinup
+
+    [[meto_linux_gfortran_loobos_fire]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_fire
+            DUMP_FILE = ../meto_linux_gfortran_loobos_fire_spinup/output/meto_linux_gfortran_loobos_fire_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_gfortran_loobos_daily_disagg]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_daily_disagg
+
+    [[meto_linux_gfortran_loobos_crm1_traitF]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm1_traitF
+
+    [[meto_linux_gfortran_loobos_crm4_traitF]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm4_traitF
+
+    [[meto_linux_gfortran_loobos_crm5_traitF]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm5_traitF
+
+    [[meto_linux_gfortran_loobos_crm6_traitF]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitF
+
+    [[meto_linux_gfortran_loobos_crm6_traitT]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitT
+
+    [[meto_linux_gfortran_loobos_crm6_traitT_farquhar]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitT
+            ROSE_APP_OPT_CONF_KEYS = farquhar
+
+    [[meto_linux_gfortran_loobos_crm6_traitF_srfT]]
+        inherit = METO_LINUX_GFORTRAN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitF_srfT
+
+    [[METO_LINUX_GFORTRAN_GSWP2]]
+        inherit = GSWP2, METO_LINUX_COMPUTE, METO_LINUX_4_TASKS, METO_LINUX_2_THREADS
+        pre-script = gen_gswp2_drive_file
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_linux_gfortran_omp
+
+    [[METO_LINUX_GFORTRAN_ERAINT]]
+        inherit = ERAINT, METO_LINUX_COMPUTE, METO_LINUX_8_TASKS, METO_LINUX_2_THREADS
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_linux_gfortran_omp
+
+# For GSWP2 rivers, use OpenMP
+    [[meto_linux_gfortran_gswp2_rivers]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_rivers
+
+# For GSWP2 rivers spinup, use OpenMP
+    [[meto_linux_gfortran_gswp2_rivers_spinup]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_rivers_spinup
+
+# For GSWP2 rivers restart, use OpenMP
+    [[meto_linux_gfortran_gswp2_rivers_restart]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_rivers_restart
+            DUMP_FILE = ../meto_linux_gfortran_gswp2_rivers_spinup/output/meto_linux_gfortran_gswp2_rivers_spinup.dump.19820701.10800.nc
+
+# For GSWP2 trip, use OpenMP
+    [[meto_linux_gfortran_gswp2_trip]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_trip
+
+# For GSWP2 trip spinup, use OpenMP
+    [[meto_linux_gfortran_gswp2_trip_spinup]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_trip_spinup
+
+# For GSWP2 trip restart, use OpenMP
+    [[meto_linux_gfortran_gswp2_trip_restart]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_trip_restart
+            DUMP_FILE = ../meto_linux_gfortran_gswp2_trip_spinup/output/meto_linux_gfortran_gswp2_trip_spinup.dump.19820701.10800.nc
+
+# For GSWP2 irrig limit low river storage, use OpenMP
+    [[meto_linux_gfortran_gswp2_irrig_limit_low_river_storage]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_irrig_limit_low_river_storage
+            DUMP_FILE = ../meto_linux_gfortran_gswp2_trip_spinup/output/meto_linux_gfortran_gswp2_trip_spinup.dump.19820701.10800.nc
+
+# For GSWP2 irrig limit high river storage, use OpenMP
+    [[meto_linux_gfortran_gswp2_irrig_limit_high_river_storage]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_irrig_limit_high_river_storage
+            DUMP_FILE = ../meto_linux_gfortran_gswp2_trip_spinup/output/meto_linux_gfortran_gswp2_trip_spinup.dump.19820701.10800.nc
+            
+# GSWP2 closures
+    [[meto_linux_gfortran_gswp2_closures]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_closures
+
+# GSWP2 euro4
+    [[meto_linux_gfortran_gswp2_euro4]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_euro4
+
+# GSWP2 gl7
+    [[meto_linux_gfortran_gswp2_gl7]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_gl7
+
+# GSWP2 gl4
+    [[meto_linux_gfortran_gswp2_gl4]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_gl4
+
+# GSWP2 ukv
+    [[meto_linux_gfortran_gswp2_ukv]]
+        inherit = METO_LINUX_GFORTRAN_GSWP2
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_ukv
+
+# ERAINT 2ddata
+    [[meto_linux_gfortran_eraint_rfm_2ddata]]
+        inherit = METO_LINUX_GFORTRAN_ERAINT
+        [[[environment]]]
+            ROSE_TASK_APP = eraint_rfm_2ddata
+
+    [[meto_linux_gfortran_eraint_trip_2ddata]]
+        inherit = METO_LINUX_GFORTRAN_ERAINT
+        [[[environment]]]
+            ROSE_TASK_APP = eraint_trip_2ddata
+            DUMP_FILE = $ERAINT_INSTALL_DIR/brahma_eraint.dump.19951031.0.nc
+
+    [[METO_LINUX_GFORTRAN_IMOGEN]]
+        inherit = IMOGEN, METO_LINUX_COMPUTE, METO_LINUX_8_TASKS, METO_LINUX_2_THREADS
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_linux_gfortran_omp
+
+    [[meto_linux_gfortran_imogen_layeredc_spinup]]
+        inherit = METO_LINUX_GFORTRAN_IMOGEN
+        [[[environment]]]
+            ROSE_TASK_APP = imogen_layeredc_spinup
+
+    [[meto_linux_gfortran_imogen_layeredc]]
+        inherit = METO_LINUX_GFORTRAN_IMOGEN
+        [[[environment]]]
+            ROSE_TASK_APP = imogen_layeredc
+            DUMP_FILE = ../meto_linux_gfortran_imogen_layeredc_spinup/output/meto_linux_gfortran_imogen_layeredc_spinup.dump.18650101.0.nc
+
+###############################################################################
+## Comparison jobs
+###############################################################################
+    [[METO_LINUX_GFORTRAN_NETCDF_COMPARISON]]
+        inherit = KGO_CHECK, METO_LINUX_NETCDF_COMPARISON
+
+    [[nccmp_meto_linux_gfortran_loobos_gl7]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_gl7/output
+
+    [[nccmp_meto_linux_gfortran_loobos_gl4]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_gl4/output
+
+    [[nccmp_meto_linux_gfortran_loobos_gl8]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_gl8/output
+
+    [[nccmp_meto_linux_gfortran_loobos_gl8_medlyn]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_gl8_medlyn/output
+
+    [[nccmp_meto_linux_gfortran_loobos_vegdrag]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_vegdrag/output
+
+    [[nccmp_meto_linux_gfortran_loobos_euro4]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_euro4/output
+
+    [[nccmp_meto_linux_gfortran_loobos_forecast]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_forecast/output
+
+    [[nccmp_meto_linux_gfortran_loobos_ukv]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_ukv/output
+
+    [[nccmp_meto_linux_gfortran_loobos_trif]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_trif/output
+
+    [[nccmp_meto_linux_gfortran_loobos_julesc]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_julesc/output
+
+    [[nccmp_meto_linux_gfortran_loobos_jules_c1p1]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_jules_c1p1/output
+            
+    [[nccmp_meto_linux_gfortran_loobos_jules_c1p1_fire]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_jules_c1p1_fire/output
+
+    [[nccmp_meto_linux_gfortran_loobos_jules_layeredcn]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_jules_layeredcn/output
+
+    [[nccmp_meto_linux_gfortran_loobos_jules_cn]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_jules_cn/output
+
+    [[nccmp_meto_linux_gfortran_loobos_jules_es_1p0]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_jules_es_1p0/output
+
+    [[nccmp_meto_linux_gfortran_loobos_fire]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_fire/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crops]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crops/output
+
+    [[nccmp_meto_linux_gfortran_loobos_prescribe_sthuf]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_prescribe_sthuf/output
+
+    [[nccmp_meto_linux_gfortran_loobos_irrig]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_irrig/output
+
+    [[nccmp_meto_linux_gfortran_loobos_irrig_nirrtile]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_irrig_nirrtile/output
+
+    [[nccmp_meto_linux_gfortran_loobos_daily_disagg]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_daily_disagg/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crm1_traitF]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crm1_traitF/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crm4_traitF]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crm4_traitF/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crm5_traitF]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crm5_traitF/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crm6_traitF]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crm6_traitF/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crm6_traitT]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crm6_traitT/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crm6_traitT_farquhar]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crm6_traitT_farquhar/output
+
+    [[nccmp_meto_linux_gfortran_loobos_crm6_traitF_srfT]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_loobos_crm6_traitF_srfT/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_rivers]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_rivers/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_rivers_restart]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_rivers_restart/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_trip]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_trip/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_trip_restart]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_trip_restart/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_irrig_limit_low_river_storage]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_irrig_limit_low_river_storage/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_irrig_limit_high_river_storage]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_irrig_limit_high_river_storage/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_closures]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_closures/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_euro4]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_euro4/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_gl7]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_gl7/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_gl4]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_gl4/output
+
+    [[nccmp_meto_linux_gfortran_gswp2_ukv]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_gswp2_ukv/output
+
+    [[nccmp_meto_linux_gfortran_eraint_rfm_2ddata]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_eraint_rfm_2ddata/output
+
+    [[nccmp_meto_linux_gfortran_eraint_trip_2ddata]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_eraint_trip_2ddata/output
+
+    [[nccmp_meto_linux_gfortran_imogen_layeredc]]
+        inherit = METO_LINUX_GFORTRAN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_linux_gfortran_imogen_layeredc/output
+
+###############################################################################
+## Housekeeping jobs
+###############################################################################
+    [[METO_LINUX_GFORTRAN_HOUSEKEEPING]]
+        inherit = HOUSEKEEPING, METO_LINUX
+
+    [[housekeep_meto_linux_gfortran_loobos_gl7]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_gl7
+
+    [[housekeep_meto_linux_gfortran_loobos_gl4]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_gl4
+            
+    [[housekeep_meto_linux_gfortran_loobos_gl8]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_gl8
+            
+    [[housekeep_meto_linux_gfortran_loobos_gl8_medlyn]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_gl8_medlyn
+            
+    [[housekeep_meto_linux_gfortran_loobos_vegdrag]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_vegdrag
+            
+    [[housekeep_meto_linux_gfortran_loobos_euro4]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_euro4
+
+    [[housekeep_meto_linux_gfortran_loobos_forecast]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+           DIR1 = ../meto_linux_gfortran_loobos_forecast
+
+    [[housekeep_meto_linux_gfortran_loobos_ukv]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_ukv
+
+    [[housekeep_meto_linux_gfortran_loobos_trif_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_trif_spinup
+
+    [[housekeep_meto_linux_gfortran_loobos_trif]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_trif
+
+    [[housekeep_meto_linux_gfortran_loobos_julesc_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_julesc_spinup
+
+    [[housekeep_meto_linux_gfortran_loobos_julesc]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_julesc
+
+    [[housekeep_meto_linux_gfortran_loobos_jules_c1p1]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_c1p1
+          
+    [[housekeep_meto_linux_gfortran_loobos_jules_c1p1_fire]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_c1p1_fire
+
+    [[housekeep_meto_linux_gfortran_loobos_jules_layeredcn_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_layeredcn_spinup
+
+    [[housekeep_meto_linux_gfortran_loobos_jules_layeredcn]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_layeredcn
+
+    [[housekeep_meto_linux_gfortran_loobos_jules_cn_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_cn_spinup
+
+    [[housekeep_meto_linux_gfortran_loobos_jules_cn]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_cn
+
+    [[housekeep_meto_linux_gfortran_loobos_jules_es_1p0_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_es_1p0_spinup
+
+    [[housekeep_meto_linux_gfortran_loobos_jules_es_1p0]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_jules_es_1p0
+
+    [[housekeep_meto_linux_gfortran_loobos_crops]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crops
+
+    [[housekeep_meto_linux_gfortran_loobos_prescribe_sthuf]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_prescribe_sthuf
+
+    [[housekeep_meto_linux_gfortran_loobos_irrig]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_irrig
+
+    [[housekeep_meto_linux_gfortran_loobos_irrig_nirrtile]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_irrig_nirrtile
+
+    [[housekeep_meto_linux_gfortran_loobos_fire_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_fire_spinup
+
+    [[housekeep_meto_linux_gfortran_loobos_fire]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_fire
+
+    [[housekeep_meto_linux_gfortran_loobos_daily_disagg]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_daily_disagg
+
+    [[housekeeping_meto_linux_gfortran_loobos_crm1_traitF]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crm1_traitF
+
+    [[housekeeping_meto_linux_gfortran_loobos_crm4_traitF]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crm4_traitF
+
+    [[housekeeping_meto_linux_gfortran_loobos_crm5_traitF]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crm5_traitF
+
+    [[housekeeping_meto_linux_gfortran_loobos_crm6_traitF]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crm6_traitF
+
+    [[housekeeping_meto_linux_gfortran_loobos_crm6_traitT]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crm6_traitT
+
+    [[housekeeping_meto_linux_gfortran_loobos_crm6_traitT_farquhar]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crm6_traitT_farquhar
+
+    [[housekeeping_meto_linux_gfortran_loobos_crm6_traitF_srfT]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_loobos_crm6_traitF_srfT
+
+    [[housekeep_meto_linux_gfortran_gswp2_rivers]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_rivers
+
+    [[housekeep_meto_linux_gfortran_gswp2_rivers_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_rivers_spinup
+
+    [[housekeep_meto_linux_gfortran_gswp2_rivers_restart]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_rivers_restart
+
+    [[housekeep_meto_linux_gfortran_gswp2_trip]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_trip
+
+    [[housekeep_meto_linux_gfortran_gswp2_trip_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_trip_spinup
+
+    [[housekeep_meto_linux_gfortran_gswp2_trip_restart]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_trip_restart
+
+    [[housekeep_meto_linux_gfortran_gswp2_irrig_limit_low_river_storage]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_irrig_limit_low_river_storage
+
+    [[housekeep_meto_linux_gfortran_gswp2_irrig_limit_high_river_storage]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_irrig_limit_high_river_storage
+            
+    [[housekeep_meto_linux_gfortran_gswp2_closures]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_closures
+
+    [[housekeep_meto_linux_gfortran_gswp2_euro4]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_euro4
+
+    [[housekeep_meto_linux_gfortran_gswp2_gl7]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_gl7
+
+    [[housekeep_meto_linux_gfortran_gswp2_gl4]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_gl4
+
+    [[housekeep_meto_linux_gfortran_gswp2_ukv]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_gswp2_ukv
+
+    [[housekeep_meto_linux_gfortran_eraint_rfm_2ddata]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_eraint_rfm_2ddata
+
+    [[housekeep_meto_linux_gfortran_eraint_trip_2ddata]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_eraint_trip_2ddata
+
+    [[housekeep_meto_linux_gfortran_imogen_layeredc_spinup]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_imogen_layeredc_spinup
+
+    [[housekeep_meto_linux_gfortran_imogen_layeredc]]
+        inherit = METO_LINUX_GFORTRAN_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_gfortran_imogen_layeredc

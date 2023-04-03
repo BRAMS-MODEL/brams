@@ -1,0 +1,13 @@
+&jules_soil
+confrac=0.3,
+dzsoil_io=0.1,0.3,0.6,1.0,1.4,1.6,2.0,  !nao utilizado (= SLZ, definido no RAMSIN)
+l_bedrock=.false.,
+l_dpsids_dsdz=.false.,
+l_soil_sat_down=.false.,
+l_tile_soil=.false.,
+l_vg_soil=.false.,
+sm_levels=7,          !nao utilizado (= NZG, definido no RAMSIN)
+soilhc_method=1,
+zsmc=1.0,
+zst=1.0,
+/

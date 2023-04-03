@@ -1,0 +1,19 @@
+&jules_output
+dump_period=1,          !DSM - nao utilizado - utilizando a variavel FRQHIS do RAMSIN
+nprofiles=1,
+output_dir='./output',  !DSM - nao utilizado - utilizando a variavel AFILOUT do RAMSIN
+run_id='AA',            !DSM - nao utilizado - utilizando a variavel AFILOUT do RAMSIN
+/
+&jules_output_profile
+file_period=0,
+nvars=1,
+output_main_run=.true.,
+output_spinup=.false.,
+output_period=1800,     !DSM - nao utilizado - utilizando a variavel FRQANL do RAMSIN
+output_type=1*'S',
+profile_name='tstep',
+var='precip','tstar_gb','pstar','gpp_gb','resp_s_gb','resp_p_gb','npp_gb','albedo_land','NDVI_land',
+'u10m','v10m','t1p5m_gb','q1p5m_gb','sw_down','lw_down','diff_frac','latent_heat','ftl_gb',
+'fsmc','gpp','lai','npp','resp_p','t_soil','smcl','smc_avail_tot','frac','cs_gb','lai_gb',
+var_name='',
+/

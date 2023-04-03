@@ -1,0 +1,1168 @@
+!############################# Change Log ##################################
+! Interface entre BRAMS e JULES
+! 
+
+SUBROUTINE sfclyr_jules(mzp,mxp,myp,ia,iz,ja,jz,jdim)
+
+  !--- Modulos do BRAMS ---
+  use node_mod, only: &
+       MYNUM,         & ! INTENT(OUT)
+       i0,            & ! INTENT(IN)  
+       j0	            ! INTENT(IN) 
+  use io_params, only : frqanl, hfilout,frqhis,hfilin
+
+  USE leaf_coms, ONLY : veg_ht,slcpd, nstyp, nvtyp_teb,slbs,slcons,slden,Wwilt,PHIsat &
+                        ,alfa_vG,slmsts, dtll_factor,gzotheta 
+
+  !USE extras, ONLY: extra2d,extra3d
+
+  USE mem_leaf      
+
+  USE mem_jules      
+
+  USE mem_basic,     ONLY: basic_g
+
+  USE mem_grid ,     ONLY : dtlt,npatch, nzg, nzs, grid_g, time, dtlong, iyear1,imonth1, idate1 &
+                            ,itime1, timmax,zt,dzt,ngrid,runtype   ! INTENT(IN)
+                    
+  USE rconstants,    ONLY : cpi,cp,alvl,vonk,g,p00,cpor
+
+  USE mem_radiate,   ONLY : radiate_g
+
+  USE mem_turb,      ONLY : turb_g
+  
+  USE nstypes,       ONLY : npft,ntype
+
+  USE mem_cuparm,    ONLY: cuparm_g, nnqparm
+
+  USE micphys,       ONLY: level
+
+  USE mem_micro,     ONLY: micro_g
+ 
+!CCATT  USE chem1_list,    ONLY: CO2
+ 
+!CCATT  USE mem_chem1,     ONLY: chem1_g, nsrc, chem1_src_vars, bioge, chem1_src_g,ntimes_src
+
+  USE mem_globaer,   ONLY: wtmol_air 
+
+  !--- Modulos do JULES ---
+  USE csigma, ONLY :  sbcon
+  
+  USE initial_mod, ONLY : dump_io
+
+  USE init_grid_mod, ONLY :  init_grid
+
+  USE inout,         ONLY : print_step,jinUnit,stdIn,outDir,runID
+
+  USE ancil_info,    ONLY : ntiles,sm_levels,land_pts,row_length,n_rows,land_index & ! INTENT(IN)
+                            ,co2_dim_len,co2_dim_row,tile_pts,tile_index,frac
+
+  USE p_s_parms, ONLY     : sthf,sthu   !   sthu may be used for sthuf
+
+  USE prognostics,   ONLY : lai,gc,t_soil,tstar_tile,cs
+
+  USE screen, ONLY : q1p5m,q1p5m_tile,t1p5m,t1p5m_tile,u10m,v10m
+
+  USE output_mod,    ONLY : output
+  
+  USE spin_mod,      ONLY : ispin,spinUp
+
+  USE time_loc,      ONLY : date,time_jules=>time
+
+  USE coastal, ONLY :  tstar_sea
+
+  USE time_mod,      ONLY : s_to_chhmmss
+
+  USE trifctl,       ONLY : asteps_since_triffid, &
+                            NPP,   &                   ! Net primary productivity (kg C/m2/s)
+                            RESP_S, &                  ! Soil respiration (kg C/m2/s)
+                            RESP_P, &                  ! Plant respiration (kg C/m2/s)
+                            GPP                        ! Gross primary productivity (kg C/m2/s)
+
+  USE update_mod,    ONLY : drive_update,veg_update
+
+  USE veg_io_vars,   ONLY : vegVaryT
+
+  USE fluxes,        ONLY : emis_tile, land_albedo,  &
+                            LATENT_HEAT, &   !fluxo de calor latente do JULES
+                            ftl_1, &       !fluxo de calor sensivel do JULES
+                            TAUX_1, & !   W'ly component of surface wind stress (N/sq m)
+                            TAUY_1    !   S'ly component of surface wind stress (N/sq m)
+
+  USE switches, ONLY :  l_aggregate,routeOnly
+
+  USE aero,          ONLY : co2_3d
+
+!CCATT  USE chem1_list, ONLY:           &
+!CCATT       chem_nspecies=>nspecies
+  
+  IMPLICIT NONE
+  
+  INTEGER, PARAMETER    :: nv=17,np=5  !, fat_dtlong=10 !40  !fator de dtlong para rodar o JULES: timestep = driveDataPer = DTLONG*fat_dtlong
+
+  INTEGER               :: v,p,pj, nsoil, fat_dtlong
+  
+  REAL                  :: var(nv,np),var_mh(nv,np),var_md(nv,np),lon_ponto(np),lat_ponto(np)
+
+  CHARACTER (LEN=12)     :: nome_ponto(np)
+
+
+  CHARACTER (LEN=3)     :: sufixo
+  
+  DATA (lon_ponto(p),p=1,np)  /    -60.047778,           -62.35,      -55.03639,     -54.785833,    -71.94923      /
+  DATA (lat_ponto(p),p=1,np)  /     -3.039167,           -10.75,       -2.85500,      -2.424722,     -9.401823      /
+  DATA (nome_ponto(p),p=1,np) /'METAR__SBEG_',   'Fazenda_N.S.', 'Torre__km67_', 'METAR__SBSN_', 'PONTO___BAD_'     /
+  
+  
+  LOGICAL  :: is_point
+  
+  INTEGER, INTENT(IN) :: mzp,mxp,myp,ia,iz,ja,jz,jdim
+  
+  !Local Variables
+  INTEGER            :: ng,a_step,i ,j, k2,jd,l,n,ip,tB(ntype),qual_ip(ntype),it,k,mm,n_mh(np),n_md(np)
+
+  LOGICAL            :: endRun    !  TRUE at end of last timestep in run
+
+  LOGICAL              :: tem_in
+
+  REAL               :: hcpi, zoverl,cx,wtol,psin,piv,ustar2,tstar2,rstar2,resp_s_tot(land_pts),dz,dz_inv,co2_flux &
+                        ,tempk1,tempk2,tempk3,fracliq,picpi,dens2,zts2,ths2,aux
+
+  REAL :: rlongupJ(land_pts)
+  
+  REAL ::  tile_frac(land_pts,ntiles)  !  tile fractions
+  
+  CHARACTER(len=10)  ::  time_hms  ! Time in the form "hh:mm:ss H", used as a local variable
+                                   ! that is required because some compilers can not cope
+                                   ! with recursive write statements
+  CHARACTER (LEN=80) :: veg(ntype)
+
+  CHARACTER (LEN=2)  :: tB_str    
+
+  REAL, DIMENSION(mxp,myp) :: rvs2,ups2,vps2,pp2,temp2,pcpgl
+
+  INTEGER            :: nLAND,mxJ,myJ,nPEs,iam,ierr  ! =0 => possui ponto de continente na grade, =1=> nLAND=0
+
+  LOGICAL            :: start=.TRUE.
+  
+  REAL, ALLOCATABLE :: zts2J(:,:)
+  
+  DATA wtol/1e-20/
+
+
+
+   include 'mpif.h'
+!     Find total number of PEs
+!    call MPI_Comm_size(MPI_COMM_WORLD, nPEs, ierr)
+!     Find the rank of this node
+    call MPI_Comm_rank(MPI_COMM_WORLD, iam, ierr)
+!    print*,'nPEs=',nPEs,'     iam=',iam
+
+   !if(time .ge. 29800.) frqanl=20.  !DSM tmp
+
+   ng=ngrid
+
+   mxJ=iz-ia+1
+   myJ=jz-ja+1
+   
+   ALLOCATE( zts2J(mxJ,myJ) )
+
+!--- proximo do nascer e do por do sol o JULES serah chamado com maior frequencia, pois os processos de superficie variam mais rapidamente ---
+!if (abs(radiate_g(ng)%cosz(4,4)) < 0.1) then
+   fat_dtlong=1 
+!elseif (abs(radiate_g(ng)%cosz(4,4)) < 0.2) then
+!   fat_dtlong=3  ! no nascer e no por do sol o JULES serah chamado a cada timestep
+!elseif (abs(radiate_g(ng)%cosz(4,4)) < 0.4) then
+!   fat_dtlong=6  ! no nascer e no por do sol o JULES serah chamado a cada timestep
+!else
+!   fat_dtlong=10
+!endif
+
+if (1==2 .and. time>223140.0 .and. (mynum==120 .or. mynum==121)) then
+!if (mynum==3053 .and. mod(time,3000.)==0) then
+!      write(16,*)
+!do j=1,size(basic_g(ng)%pp,3)
+!   do i=1,size(basic_g(ng)%pp,2)
+!      write(mynum,*) 'i) ',time,i,j,basic_g(ng)%pp(2,i,j)
+!   enddo
+!enddo   
+
+      write(mynum,*)
+      write(mynum,*)'i) ',time                                     ,grid_g(ng)%glon(2,8)   ,grid_g(ng)%glat             (2,8)  ,leaf_g(ng)%soil_water (2,2,8,2) &
+                      ,leaf_g(ng)%sfcwater_mass  (1,2,8,2),leaf_g(ng)%soil_energy(1,2,8,2) ,leaf_g(ng)%sfcwater_energy(1,2,8,2),leaf_g(ng)%soil_text  (2,2,8,2) &
+                      ,leaf_g(ng)%sfcwater_depth (1,2,8,2),leaf_g(ng)%ustar        (2,8,2) ,leaf_g(ng)%tstar            (2,8,2),leaf_g(ng)%rstar        (2,8,2) &
+                      ,leaf_g(ng)%veg_albedo       (2,8,2),leaf_g(ng)%veg_fracarea (2,8,2) ,leaf_g(ng)%veg_lai          (2,8,2),leaf_g(ng)%veg_tai      (2,8,2) &
+                      ,leaf_g(ng)%veg_rough        (2,8,2),leaf_g(ng)%veg_height   (2,8,2) ,leaf_g(ng)%patch_area       (2,8,2),leaf_g(ng)%patch_rough  (2,8,2) &
+                      ,leaf_g(ng)%patch_wetind     (2,8,2),leaf_g(ng)%leaf_class   (2,8,2) ,leaf_g(ng)%soil_rough       (2,8,2),leaf_g(ng)%sfcwater_nlev(2,8,2) &
+                      ,leaf_g(ng)%stom_resist      (2,8,2),leaf_g(ng)%ground_rsat  (2,8,2) ,leaf_g(ng)%ground_rvap      (2,8,2),leaf_g(ng)%veg_water    (2,8,2) &
+                      ,leaf_g(ng)%veg_temp         (2,8,2),leaf_g(ng)%can_rvap     (2,8,2) ,leaf_g(ng)%can_temp         (2,8,2),leaf_g(ng)%veg_ndvip    (2,8,2) &
+                      ,leaf_g(ng)%veg_ndvic        (2,8,2),leaf_g(ng)%veg_ndvif    (2,8,2) ,basic_g(ng)%pp           (31,2,8)  ,basic_g(ng)%up       (31,2,8)   &
+                      ,basic_g(ng)%vp           (31,2,8)  ,radiate_g(ng)%rlong     (2,8)   ,radiate_g(ng)%rlongup       (2,8)  ,radiate_g(ng)%albedt    (2,8)   &
+                      ,turb_g(ng)%sflux_r          (2,8)  ,turb_g(ng)%sflux_t      (2,8)   ,turb_g(ng)%sflux_u          (2,8)  ,turb_g(ng)%sflux_v      (2,8)   &
+                      ,turb_g(ng)%sflux_w          (2,8)  ,basic_g(ng)%wp       (31,2,8)                                             
+   call flush(mynum)
+endif
+!if (time>=9000) stop 'aaaaaa'
+
+
+   !--- Inicializando a grade do JULES ---
+   IF (start) THEN     !DSM --- Semelhante a time==0, mas serve tambem para o history
+
+      jinUnit = stdIn
+      INQUIRE(FILE='./jules.in',EXIST=tem_in)
+      IF (tem_in) THEN
+         OPEN (77,FILE='./jules.in', STATUS='old')
+      ELSE
+         WRITE(*,*)'Not found ./jules.in control file.'
+         STOP 
+      ENDIF
+ 
+      WRITE(*,"(50('-'),/,a)")'Reading model control file (./jules.in)...'
+
+      !-----------------------------------------------------------------------
+      ! Read model options and misc other values.
+      !-----------------------------------------------------------------------
+      CALL init_opts(mxJ,myJ)
+
+      !-----------------------------------------------------------------------
+      ! Read date, time and location information
+      !-----------------------------------------------------------------------
+      CALL init_time(dtlong,iyear1,imonth1,idate1,itime1,timmax,time,frqhis,runtype)
+
+      !-----------------------------------------------------------------------
+      ! Read details of model grid and allocate arrays.
+      !-----------------------------------------------------------------------
+
+      CALL init_grid(mxJ,myJ,npatch,leaf_g(ng)%patch_area (   ia:iz, ja:jz, :),  &
+                                        grid_g(ng)%glon         (   ia:iz, ja:jz   ),  &
+                                        grid_g(ng)%glat         (   ia:iz, ja:jz   )      )
+   ENDIF !(time==0)
+
+!if (time>=40000 .and. mynum==6141  .and. 1==2) then
+
+!do k=1,24
+!if (mynum==5) then
+!      do i=1,iz+1
+!         do j=1,jz+1
+!            write(15,'(a,f8.0,2i3,16(f14.6,1x))') 'a.pp.sfclyr_jules',time,i,j,grid_g(ng)%glon(i,j),grid_g(ng)%glat(i,j),basic_g(ng)%pp(1,i,j), &
+!                         basic_g(ng)%up(1,i,j),basic_g(ng)%vp(1,i,j),basic_g(ng)%theta(1,i,j),  &
+!                         radiate_g(ng)%rshort (i,j),radiate_g(ng)%rlong (i,j),basic_g(ng)%rv (1,i,j), &
+!                         radiate_g(ng)%albedt (i,j)
+!            write(15,*)                                   
+!         enddo
+!      enddo
+!   !write(69,*)
+!   call flush(15)
+!endif 
+!enddo
+
+
+   hcpi = .5 * cpi
+   DO l=1,land_pts
+      j = ( land_index(l)-1 ) / row_length + 1
+      i = land_index(l) - ( j-1 ) * row_length
+
+      IF (i<1 .or. i>mxJ .or. j<1 .or. j>myJ) THEN
+         PRINT*, "ERRO... conversao incorreta de l para i,j -> l,i,j=",l,i,j
+         STOP
+      ENDIF
+      
+      rvs2(i+ia-1,j+ja-1) = basic_g(ng)%rv(2,i+ia-1,j+ja-1)
+      ups2(i+ia-1,j+ja-1) = basic_g(ng)%up(2,i+ia-1,j+ja-1)
+      !ups2(i+ia-1,j+ja-1) = (basic_g(ng)%up(2,i+ia-2,j+ja-1) + basic_g(ng)%up(2,i+ia-1,j+ja-1)) * .5
+      !DSM 21Fev2012> vps2(i+ia-1,j+ja-1) = (basic_g(ng)%vp(2,i+ia-1,j+ja-1-jdim) + basic_g(ng)%vp(2,i+ia-1,j+ja-1)) * .5
+      !vps2(i+ia-1,j+ja-1) = (basic_g(ng)%vp(2,i+ia-1,j+ja-2) + basic_g(ng)%vp(2,i+ia-1,j+ja-1)) * .5
+      vps2(i+ia-1,j+ja-1) = basic_g(ng)%vp(2,i+ia-1,j+ja-1)
+      
+      picpi = (basic_g(ng)%pi0(2,i+ia-1,j+ja-1) + basic_g(ng)%pp(2,i+ia-1,j+ja-1)) * cpi
+      pp2(i+ia-1,j+ja-1)=p00 * picpi ** cpor
+
+      k2=grid_g(ng)%lpw(i+ia-1,j+ja-1)
+      piv = hcpi * (basic_g(ng)%pi0(k2-1,i+ia-1,j+ja-1) + basic_g(ng)%pi0(k2,i+ia-1,j+ja-1)   &
+                  + basic_g(ng)%pp(k2-1,i+ia-1,j+ja-1) + basic_g(ng)%pp(k2,i+ia-1,j+ja-1))
+
+      !aux=basic_g(ng)%theta(k2,i+ia-1,j+ja-1) * piv
+      aux=basic_g(ng)%theta(2,i+ia-1,j+ja-1)*basic_g(ng)%pi0(2,i+ia-1,j+ja-1)/1004
+
+      !temp2(i+ia-1,j+ja-1) = basic_g(ng)%theta(2,i+ia-1,j+ja-1)*basic_g(ng)%pi0(2,i+ia-1,j+ja-1)/1004
+! if (mynum==120) print*,time,aux,   basic_g(ng)%theta(2,i+ia-1,j+ja-1)*basic_g(ng)%pi0(2,i+ia-1,j+ja-1)/1004  
+      temp2(i+ia-1,j+ja-1) = aux   != airtemp = tstar_tile
+
+      
+
+if (1==2 .and. mynum==120) then
+    write(16,*) 'a.pp.sfclyr_jules',time,i,j,aux,temp2(i+ia-1,j+ja-1)
+    write(16,*)                                   
+    call flush(16)
+endif
+!if (mynum==500) then
+!            write(16,*) 'em sfclyr_jules',time,i,j,k2,i+ia-1,j+ja-1,basic_g(ng)%theta(k2,i+ia-1,j+ja-1),piv,aux
+!            write(16,*)                                   
+!   call flush(16)
+!endif 
+
+      !--- Precipitacao total ---
+      pcpgl(i+ia-1,j+ja-1)=0.
+      IF (nnqparm(ng) > 0 .and. level >= 3) THEN
+         pcpgl(i+ia-1,j+ja-1)=cuparm_g(ng)%conprr(i+ia-1,j+ja-1) + micro_g(ng)%pcpg(i+ia-1,j+ja-1)
+      ELSEIF(nnqparm(ng) == 0 .and. level >= 3) THEN
+         pcpgl(i+ia-1,j+ja-1)=micro_g(ng)%pcpg(i+ia-1,j+ja-1)
+      ENDIF
+      
+      zts2J(i,j) = zt(2) * grid_g(ng)%rtgt(i+ia-1,j+ja-1)
+
+      !--- checando consistencias ---!
+      !if (radiate_g(ng)%rshort(i+ia-1,j+ja-1) < 0.0 .or. radiate_g(ng)%rshort(i+ia-1,j+ja-1) > 2000.0) then
+      !   print*, 'rshort com valor fora do esperado: ',i,j,radiate_g(ng)%rshort(i+ia-1,j+ja-1),mynum
+      !   radiate_g(ng)%rshort(i+ia-1,j+ja-1)=0.
+      !   !stop
+      !endif
+      !if (radiate_g(ng)%rlong(i+ia-1,j+ja-1) < 10.0 .or. radiate_g(ng)%rlong(i+ia-1,j+ja-1) > 1000.0) then
+      !   print*, 'ERRO, rlong com valor fora do esperado: ',i,j,radiate_g(ng)%rlong(i+ia-1,j+ja-1),mynum
+      !   stop
+      !endif
+      !if (temp2(i+ia-1,j+ja-1)<200.0 .or. temp2(i+ia-1,j+ja-1)>400.0) then 
+      !   print*, 'ERRO, temp2 com valor fora do esperado: ',i,j,temp2(i+ia-1,j+ja-1),mynum
+      !   stop
+      !endif
+      !if (ups2(i+ia-1,j+ja-1)<-200.0 .or. ups2(i+ia-1,j+ja-1)>200.0) then 
+      !   print*, 'ERRO, ups2 com valor fora do esperado: ',i,j,ups2(i+ia-1,j+ja-1),mynum
+      !   stop
+      !endif
+      !if (vps2(i+ia-1,j+ja-1)<-200.0 .or. vps2(i+ia-1,j+ja-1)>200.0) then 
+      !   print*, 'ERRO, vps2 com valor fora do esperado: ',i,j,vps2(i+ia-1,j+ja-1),mynum
+      !   stop
+      !endif
+      !if (pp2(i+ia-1,j+ja-1)<10000.0 .or. pp2(i+ia-1,j+ja-1)>200000.0) then 
+      !   print*, 'ERRO, pp2 com valor fora do esperado: ',i,j,pp2(i+ia-1,j+ja-1),mynum
+      !   stop
+      !endif
+      !if (rvs2(i+ia-1,j+ja-1)<-1000.0 .or. rvs2(i+ia-1,j+ja-1)>1000.0) then 
+      !   print*, 'ERRO, rvs2 com valor fora do esperado: ',i,j,rvs2(i+ia-1,j+ja-1),mynum
+      !   stop
+      !endif
+      !if (pcpgl(i+ia-1,j+ja-1)<-0. .or. pcpgl(i+ia-1,j+ja-1)>600.0) then 
+      !   print*, 'ERRO, pcpgl com valor fora do esperado: ',i,j,pcpgl(i+ia-1,j+ja-1),mynum
+      !   stop
+      !endif
+   ENDDO
+
+
+
+   IF (start) THEN     !DSM --- Semelhante a time==0, mas serve tambem para o history
+      start=.false.
+      var_mh=0.0; n_mh=0  !iniciando a variavel que calcula a media horaria
+      var_md=0.0; n_md=0 !iniciando a variavel que calcula a media diaria
+
+
+      !nLAND = 0
+      !IF ( leaf_g(ng)%patch_area(i+ia-1,j+ja-1,1) < 1.0 ) nLAND = nLAND + 1 !serah recalculado no JULES
+      !print*,"nLAND=",nLAND
+
+      CALL sfcdata
+
+      a_step = 0
+      
+      !open (42,file='CI_to_offline.txt')  !abrindo o arquivo para plotar as condicoes que irao iniciar o JULES
+                                          ! PS: Soh serao plotadas corretamente se submetido com apenas 1 processador.
+      !--- Inicializando o JULES ---
+
+      CALL init( mxJ,myJ,npatch,nzg,nstyp,dtlong*fat_dtlong,iyear1,imonth1,idate1   &
+                     ,itime1,timmax,leaf_g(ng)%patch_area   (   ia:iz, ja:jz, :)    &
+                     ,grid_g(ng)%glon         (   ia:iz, ja:jz   )                  &
+                     ,grid_g(ng)%glat         (   ia:iz, ja:jz   )                  &
+                     ,leaf_g(ng)%veg_fracarea (   ia:iz, ja:jz, :)                  &
+                     ,leaf_g(ng)%leaf_class   (   ia:iz, ja:jz, :)                  &
+                     ,leaf_g(ng)%stom_resist  (   ia:iz, ja:jz, :)                  &
+                     ,leaf_g(ng)%soil_water   (:, ia:iz, ja:jz, 2)                  &
+                     ,leaf_g(ng)%soil_text    (:, ia:iz, ja:jz, 2)                  &
+                     ,slmsts(:)                                                     &
+                     ,leaf_g(ng)%veg_lai      (   ia:iz, ja:jz, :)                  &
+                     ,temp2                   (   ia:iz, ja:jz   )                  &
+                     ,leaf_g(ng)%soil_energy  (:, ia:iz, ja:jz, 1)                  &
+                     ,leaf_g(ng)%soil_energy  (:, ia:iz, ja:jz, 2)                  &
+                     ,veg_ht,slcpd,nvtyp_teb                                        &
+                     ,slbs,slcons,slden,Wwilt,PHIsat,alfa_vG                        &
+                     ,MYNUM,hfilout,hfilin,runtype, zts2J                           &
+               )
+       
+       close (42)              
+      
+      !{--- Verificando opcoes do RAMSIN ---
+      IF (NZG/=sm_levels) CALL erro_RAMSIN('NZG',len('NZG'),sm_levels,4)  ! 'nome da variavel descrita no RAMSIN', tamanho da variavel, valor definido em jules.in, valor recomendado
+      !IF (len(trim(hfilout(index(hfilout,'/',BACK=.TRUE.)+1:100))) > 5) THEN
+      !   PRINT*, '********'
+      !   PRINT*, 'ERRO... O nome do arquivo history (em HFILOUT) deve ter no maximo 5 caracteres'
+      !   PRINT*, '********'
+      !   STOP
+      !ENDIF
+      !}
+
+      !{--- Configurando o nome do history (dump) do JULES ---
+      !outDir=trim(hfilout(1:index(hfilout,'/',BACK=.TRUE.)-1))
+      !write(runID,'(a,i4.4)') trim(hfilout(index(hfilout,'/',BACK=.TRUE.)+1:100))//'-',MYNUM
+      !}
+
+      !--- Abrindo os arquivos para imprimir as variaveis em ascii ---
+      DO l=1,land_pts
+         j = ( land_index(l)-1 ) / row_length + 1
+         i = land_index(l) - ( j-1 ) * row_length
+         IF (i<1 .or. i>mxJ .or. j<1 .or. j>myJ) THEN
+            PRINT*, "ERRO... conversao incorreta de l para i,j -> l,i,j=",l,i,j
+            STOP
+         ENDIF
+         
+         !DO p=1,np
+         !   IF ( is_point(lon_ponto(p),lat_ponto(p),i+ia-1,j+ja-1,ng) ) THEN
+         !      DO mm=1,2   ! mm=1 => media horaria  mm=2 => media diaria
+         !         if (mm==1) then  ! media horaria
+         !            pj=30+p
+         !            sufixo='_mh'
+         !         else             ! media diaria
+         !            pj=50+p
+         !            sufixo='_md'
+         !         endif
+ 
+         !         CALL SYSTEM ('rm -f '//nome_ponto(p)//sufixo//'.txt 2>/dev/null')
+         !            OPEN (pj,FILE=nome_ponto(p)//sufixo//'.txt')
+               
+         !         WRITE(pj,'(a,a,f8.3,a,f8.3)') '*Local:        '//nome_ponto(p), ' Lon: ',grid_g(ng)%glon(i+ia-1,j+ja-1), ' Lat: ',grid_g(ng)%glat(i+ia-1,j+ja-1)
+         !         WRITE(pj,'(a,9(f8.3))')       '*veg_type:     ', leaf_g(ng)%leaf_class(i+ia-1,j+ja-1,:)
+         !         WRITE(pj,'(a,9(f8.3))')       '*veg_fracarea: ', leaf_g(ng)%veg_fracarea(i+ia-1,j+ja-1,:)
+         !         WRITE(pj,'(a,9(f8.3))')       '*veg_lai_ini : ', leaf_g(ng)%veg_lai(i+ia-1,j+ja-1,:)
+         !         WRITE(pj,'(a,9(f8.3))')       '*patch_area:   ', leaf_g(ng)%patch_area(i+ia-1,j+ja-1,:)
+         !         WRITE(pj,'(a,100(f8.3))')      '*soil_text:    ', leaf_g(ng)%soil_text(:,i+ia-1,j+ja-1,:)
+         !         WRITE(pj,'(a)') '*    time           rshort        co2_flux      resp_s_tot             npp          resp_p     t_soil(z=1)     t_soil(z=2)     t_soil(z=3)     t_soil(z=4)     t_soil(z=5)     t_soil(z=6)'// &
+         !                                   '           rlong   Rainfall_rate        Air_temp      Wind_speed        Pressure      Specif_hum'
+         !         call flush(pj)
+         !      ENDDO
+         !   ENDIF
+         !ENDDO
+         
+         !--- Abrindo o arquivo para imprimir os dados para o modelo off-line ---
+         !p=5   !somente para Torre__km67
+         !! IF (nome_ponto(p)/='Torre__km67_') THEN
+         !!    print*, 'Este ponto nao eh: Torre__km67  eh: '//nome_ponto(p)
+         !!    STOP
+         !! ENDIF
+         !pj=90+p 
+         !IF ( is_point(lon_ponto(p),lat_ponto(p),i+ia-1,j+ja-1,ng) ) THEN
+         !   CALL SYSTEM ('rm -f '//nome_ponto(p)//'_to_offline.txt 2>/dev/null')
+         !   OPEN (pj,FILE=nome_ponto(p)//'_to_offline.txt')
+           
+         !   WRITE(pj,'(a,f11.6,a,f11.6,5i4)') 'Meteorological data for Loobos - From JULES-CCATT-BRAMS'//nome_ponto(p)//' Lon: ',grid_g(ng)%glon(i+ia-1,j+ja-1), ' Lat: ',grid_g(ng)%glat(i+ia-1,j+ja-1),i,j,jdim,i+ia-1,j+ja-1
+         !   WRITE(pj,'(a,f10.1,a)') 'One year of ',dtlong*fat_dtlong,' second data.'
+         !   WRITE(pj,'(a)') '    Down  Down      Rainfall      Air          Zonal    Meridional             Specific'
+         !   WRITE(pj,'(a)') '    SWR   LWR        rate        temp.         wind     wind        Pressure   humidity     time'
+         !   WRITE(pj,'(a)') ' (W m-2) (W m-2)  (kg m-2 s-1)   (K)          (m s-1)   (m s-1) )   (Pa)      (kg kg-1)     (s)'
+         !   call flush(pj)
+         !ENDIF
+                  
+         !leaf_g(ng)%ustar=1.0  !apenas nao zerar o CO2 no segundo timestep
+         ustar2 = max(0.000001,sqrt( sqrt( (turb_g(ng)%sflux_u(i+ia-1,j+ja-1))**2 + (turb_g(ng)%sflux_v(i+ia-1,j+ja-1))**2 )))
+         DO ip=1,npatch
+            leaf_g(ng)%ustar(i+ia-1,j+ja-1,ip)=ustar2
+         ENDDO
+      ENDDO
+      
+      if (trim(runtype)=='HISTORY') CALL newTime( a_step,endRun,time,frqhis )  !DSM - Para ajustar a data da simulacao
+
+!   ENDIF !(time==0)               
+   ELSEIF (time==dtlong .or. mod(time,dtlong*fat_dtlong)==0) THEN
+      !{---Executando o JULES ---
+      !-------------------------------------------------------------------------------
+      !   Generate output if this is required at the start of a time period (i.e. 
+      !   rarely).  The logical argument (endCall) is always false at this call.
+      !-------------------------------------------------------------------------------
+      CALL output( a_step,.FALSE. )
+
+      !-------------------------------------------------------------------------------
+      !   Increment timestep counters.
+      !-------------------------------------------------------------------------------
+      a_step = a_step + 1
+      ASTEPS_SINCE_TRIFFID=ASTEPS_SINCE_TRIFFID+1
+      IF ( MOD(a_step,print_step)==0 .OR. a_step==1 ) THEN
+         time_hms = s_to_chhmmss( time_jules )
+         !IF ( spinUp ) THEN
+         !   WRITE(*,"(a,i7,tr2,a,i8,tr1,a,a,i3)") 'timestep:',a_step  &
+         !          ,'Start date and time: '  &
+         !          ,date,time_hms,' Spin up cycle: ',ispin
+         !ELSE
+         !   WRITE(*,"(a,i7,tr2,a,i8,tr1,a)") 'timestep:',a_step  &
+         !         ,'Start date and time: ',date,time_hms
+         !ENDIF
+      ENDIF
+
+
+      !-------------------------------------------------------------------------------
+      !   Update meteorological data.  2nd argument (next) is TRUE to indicate that 
+      !   the "next" data in file are to be used.
+      !-------------------------------------------------------------------------------
+
+!CCATT      IF (co2_dim_len /= mxJ .or. co2_dim_row /= myJ) then
+!CCATT         PRINT*, 'ERRO... (co2_dim_len /= mxJ .or. co2_dim_row /= myJ):'     &
+!CCATT               , co2_dim_len,' /= ',mxJ, ' or ',co2_dim_row,' /= ',myJ
+!CCATT         STOP
+!CCATT      ENDIF
+
+!CCATT      co2_3d(1:mxJ, 1:myJ) = chem1_g(CO2,ng)%sc_p (2, ia:iz, ja:jz) * 1.E-9
+
+
+!if (mynum==120 .and. time>223200.) then
+if (1==2 .and. mynum==120) then
+   write(16,*) 'em sfclyr_jules ',time,  size(radiate_g(ng)%rshort,1),size(radiate_g(ng)%rshort,2),ia,iz,ja,jz
+   write(16,*) 'em sfclyr_jules - 8,1i',time                           &
+                        ,radiate_g(ng)%rshort (8+ia-1,2+ja-1)         &
+                        ,radiate_g(ng)%rlong  (8+ia-1,2+ja-1)         &
+                        ,temp2                (8+ia-1,2+ja-1)         &
+                        ,ups2                 (8+ia-1,2+ja-1)         &
+                        ,vps2                 (8+ia-1,2+ja-1)         &
+                        ,pp2                  (8+ia-1,2+ja-1)         &
+                        ,rvs2                 (8+ia-1,2+ja-1)         &
+                        ,pcpgl                (8+ia-1,2+ja-1)
+
+   write(16,*)                                   
+   write(16,*) 'em sfclyr_jules - 4,4',time                           &
+                        ,radiate_g(ng)%rshort (4+ia-1,4+ja-1)         &
+                        ,radiate_g(ng)%rlong  (4+ia-1,4+ja-1)         &
+                        ,temp2                (4+ia-1,4+ja-1)         &
+                        ,ups2                 (4+ia-1,4+ja-1)         &
+                        ,vps2                 (4+ia-1,4+ja-1)         &
+                        ,pp2                  (4+ia-1,4+ja-1)         &
+                        ,rvs2                 (4+ia-1,4+ja-1)         &
+                        ,pcpgl                (4+ia-1,4+ja-1)
+
+   write(16,*)                                   
+   call flush(16)
+endif 
+
+
+      CALL drive_update( mxJ,myJ,npatch,nzg                          &
+                        ,radiate_g(ng)%rshort (ia:iz, ja:jz)         &
+                        ,radiate_g(ng)%rlong  (ia:iz, ja:jz)         &
+                        ,temp2                (ia:iz, ja:jz)         &
+                        ,ups2                 (ia:iz, ja:jz)         &
+                        ,vps2                 (ia:iz, ja:jz)         &
+                        ,pp2                  (ia:iz, ja:jz)         &
+                        ,rvs2                 (ia:iz, ja:jz)         &
+                        ,pcpgl                (ia:iz, ja:jz)         &
+                        ,a_step,.TRUE.                               &
+                       )
+
+      !-------------------------------------------------------------------------------
+      !   Update prescribed vegetation fields.  2nd argument (next) is TRUE to 
+      !   indicate that the "next" data in file are to be used.
+      !-------------------------------------------------------------------------------
+      IF ( vegVaryT ) CALL veg_update( a_step,.TRUE. )
+
+      !-------------------------------------------------------------------------------
+      !   Call the main model routine.
+      !-------------------------------------------------------------------------------
+      CALL control (a_step)
+
+      !-------------------------------------------------------------------------------
+      !   Generate output. This call (at the end of the timestep) is expected to
+      !   generate most of the output for a run.  The logical argument (endCall) is 
+      !   always true at this call.
+      !-------------------------------------------------------------------------------
+      CALL output( a_step,.TRUE. )
+
+      !-------------------------------------------------------------------------------
+      !   Update time.
+      !-------------------------------------------------------------------------------
+      CALL newTime( a_step,endRun,time,frqhis )
+      if (time==timmax-dtlong) CALL newTime( a_step,endRun,time+dtlong,frqhis )  !DSM - Para imprimir o ultimo history (dump)
+   
+      !-------------------------------------------------------------------------------
+      !   Check for end of run.
+      !-------------------------------------------------------------------------------
+      !    IF ( endRun ) EXIT
+
+      !--- Compatibilizando as fariaveis do BRAMS com a do JULES ---
+      
+      CALL brams2jules(veg,ntype)
+   
+      dtll_factor = 1. / float(max(1,nint(dtlt/40.+.4)))
+
+      !-------------------------------------------------------------------------------
+      ! Calculate tile fractions.
+      IF ( .NOT. routeOnly ) THEN
+        tile_frac(:,:) = 0.0
+        IF ( l_aggregate ) THEN
+          tile_frac(:,1) = 1.0
+        ELSE
+          DO n=1,ntype
+            DO j=1,tile_pts(n)
+              i = tile_index(j,n)
+              tile_frac(i,n) = frac(i,n)
+            ENDDO
+          ENDDO
+        ENDIF
+      ENDIF
+      !-------------------------------------------------------------------------------
+      
+      !--- Acoplando o rlongup ---{
+      call gbmTileDiag2( emis_tile * tstar_tile*tstar_tile*tstar_tile*tstar_tile,tile_frac,rlongupJ )
+      rlongupJ = sbcon * rlongupJ
+      !-----}
+      
+      !--- Acoplando o albedt ---{
+      !call gbmTileDiag2( alb_tile(:,:,1)+alb_tile(:,:,2), tile_frac,albedtJ )
+      !-----}
+         
+      DO l=1,land_pts
+         j = ( land_index(l)-1 ) / row_length + 1
+         i = land_index(l) - ( j-1 ) * row_length
+         IF (i<1 .or. i>mxJ .or. j<1 .or. j>myJ) THEN
+            PRINT*, "ERRO... conversao incorreta de l para i,j -> l,i,j=",l,i,j
+            STOP
+         ENDIF
+         
+         !extra2d(13,ng)%d2(i+ia-1,j+ja-1)=cs(l,1)
+         
+         !--- LAI(land_pts,npft) para veg_lai(i,j,ip) ---
+         DO n=1,npft
+            READ(veg(n)(1:2),*) tB(n)  !caso este ponto (i,j) nao possua nenhum representante para este tile (k) serah utilizado o primeiro tipo definido em brams2jules
+
+            qual_ip(n)=-999
+
+            DO ip=1,npatch
+               WRITE(tB_str,'(i2.2)') nint(leaf_g(ng)%leaf_class(i+ia-1,j+ja-1,ip))  ! Jogando o tipo do BRAMS em tB_str
+               IF (index(veg(n),tB_str)/=0) THEN
+                  READ(tB_str,*) tB(n)
+                  qual_ip(n)=ip   
+                  EXIT  ! jah encontrou para o menor patch (mais representativo)
+               ENDIF
+            ENDDO
+            
+            IF (qual_ip(n) /= -999 ) THEN               
+               !--- Acoplando o lai ---
+               leaf_g(ng)%veg_lai(i+ia-1,j+ja-1,qual_ip(n)) = lai(l,n)  !OK
+               !!!!!veg_tai = veg_lai + sai(nveg) + dead_lai
+            ENDIF
+         ENDDO
+
+         !--- gc(land_pts,ntiles) para 1/stom_resist(i,j,ip) ---
+         DO n=1,ntiles
+         
+            READ(veg(n)(1:2),*) tB(n)  !caso este ponto (i,j) nao possua nenhum representante para este tile (k) serah utilizado o primeiro tipo definido em brams2jules
+
+            qual_ip(n)=-999
+
+            DO ip=1,npatch
+               WRITE(tB_str,'(i2.2)') nint(leaf_g(ng)%leaf_class(i+ia-1,j+ja-1,ip))  ! Jogando o tipo do BRAMS em tB_str
+               IF (index(veg(n),tB_str)/=0) THEN
+                  READ(tB_str,*) tB(n)
+                  qual_ip(n)=ip   
+                  EXIT  ! jah encontrou para o menor patch (mais representativo)
+               ENDIF
+            ENDDO
+         
+            IF (qual_ip(n) /= -999 .and. qual_ip(n) /= 1) THEN    
+               !--- Acoplando a stom_resist ---
+!if (iam==10) then
+!   write(66,'(a,i,1x,i,f10.0,1x,16f16.6)') 'resist',n,qual_ip(n), time,grid_g(ng)%glon(i+ia-1,j+ja-1),grid_g(ng)%glat(i+ia-1,j+ja-1),             &
+!                                                      leaf_g(ng)%stom_resist(i+ia-1,j+ja-1,qual_ip(n)),                          &
+!                                                      1/max(0.000001,gc(l,n)),                                                   &
+!                                                     abs(leaf_g(ng)%stom_resist(i+ia-1,j+ja-1,qual_ip(n)) / (1/max(0.000001,gc(l,n))) - 1.)*100.
+!   call flush (66)            
+!endif       
+               leaf_g(ng)%stom_resist(i+ia-1,j+ja-1,qual_ip(n)) = 1/max(0.000001,gc(l,n))  !OK
+
+               !--- Acoplando a teveg ---
+!if (iam==10) then
+!   write(66,'(a,i,1x,i,f10.0,1x,16f16.6)')'tveg',n,qual_ip(n), time,grid_g(ng)%glon(i+ia-1,j+ja-1),grid_g(ng)%glat(i+ia-1,j+ja-1), &
+!                                                                    leaf_g(ng)%veg_temp(i+ia-1,j+ja-1,qual_ip(n)), &
+!                                                                    tstar_tile(l,n),                               &
+!                                                                    abs(leaf_g(ng)%veg_temp(i+ia-1,j+ja-1,qual_ip(n))/tstar_tile(l,n) - 1.)*100.
+!   call flush (66)            
+!endif       
+               leaf_g(ng)%veg_temp(i+ia-1,j+ja-1,qual_ip(n))=tstar_tile(l,n)
+
+               !if (qual_ip(n)==2) extra2d(6,ng)%d2(i+ia-1,j+ja-1)=tstar_tile(l,n)
+               !if (qual_ip(n)==2) extra2d(7,ng)%d2(i+ia-1,j+ja-1)=t1p5m_tile(l,n)  
+
+               !if (qual_ip(n)==2) extra2d(8,ng)%d2(i+ia-1,j+ja-1)=q1p5m_tile(l,n)  
+
+               !extra3d(10,ng)%d3(n,i+ia-1,j+ja-1)=tstar_tile(l,n)  
+               !extra3d(11,ng)%d3(n,i+ia-1,j+ja-1)=t1p5m_tile(l,n)  
+               !extra3d(12,ng)%d3(n,i+ia-1,j+ja-1)=q1p5m_tile(l,n)  
+                                
+            ENDIF
+
+         ENDDO
+         
+         !--- Acoplando o rlongup ---{
+         radiate_g(ng)%rlongup(i+ia-1,j+ja-1) = rlongupJ(l)
+         !-----}
+         
+         !if (mynum==27 .and. i==3 .and. j==1) print*,radiate_g(ng)%rshort(i+ia-1,j+ja-1),land_albedo(i,j,1),land_albedo(i,j,2),land_albedo(i,j,3),land_albedo(i,j,4)
+                                                  
+         !--- Acoplando o albedt ---{
+         !!!!! radiate_g(ng)%albedt(i+ia-1,j+ja-1) = land_albedo(i,j,1)+land_albedo(i,j,2)
+         radiate_g(ng)%albedt(i+ia-1,j+ja-1)=(land_albedo(i,j,1)+land_albedo(i,j,2)+land_albedo(i,j,3)+land_albedo(i,j,4))/4
+         !radiate_g(ng)%albedt(i+ia-1,j+ja-1) = 0.5*( land_albedo(i,j,2) + land_albedo(i,j,4))
+         !-----}
+         
+         !extra2d(9,ng)%d2(i+ia-1,j+ja-1)=t1p5m(i,j)
+         !extra2d(10,ng)%d2(i+ia-1,j+ja-1)=q1p5m(i,j)
+         !extra2d(11,ng)%d2(i+ia-1,j+ja-1)=u10m(i,j)
+         !extra2d(12,ng)%d2(i+ia-1,j+ja-1)=v10m(i,j)
+         
+         !--- Escrevendo as variaveis do JULES de output ---
+         jules_g(ng)%u10mj(i+ia-1,j+ja-1)=u10m(i,j)
+         jules_g(ng)%v10mj(i+ia-1,j+ja-1)=v10m(i,j)
+         jules_g(ng)%t2mj(i+ia-1,j+ja-1)=t1p5m(i,j)
+         jules_g(ng)%rv2mj(i+ia-1,j+ja-1)=q1p5m(i,j)
+         
+
+         !--- Acoplando a sst ---
+         !sst(:,:)= (soil_energy(nzg,:,:,1)-334000)/4186 + 273.15
+!if (iam==10) then
+!   write(66,'(a,f10.0,1x,16f16.6)')'sst', time,grid_g(ng)%glon(i+ia-1,j+ja-1),grid_g(ng)%glat(i+ia-1,j+ja-1), &
+!                                         leaf_g(ng)%soil_energy(1:nzg,i+ia-1,j+ja-1,1),(tstar_sea(i,j)-273.15)*4186 + 334000
+!   call flush (66)            
+!endif       
+         !!!!!! leaf_g(ng)%soil_energy(1:nzg,i+ia-1,j+ja-1,1)=(tstar_sea(i,j)-273.15)*4186 + 334000
+         
+         resp_s_tot(l) = SUM( resp_s(l,:) )
+         
+         dz        = grid_g(ng)%rtgt(i+ia-1,j+ja-1)/dzt(2) ! dzt=1/(z(k)-z(k-1))	
+         dz_inv    = 1./dz
+
+!CCATT         co2_flux=(resp_s_tot(l) - npp(l)) * 44./12. * dz_inv * 1E+9  ! kg[CO2]/(m^3 seg)
+!CCATT         DO it=1,ntimes_src(bioge) 
+!CCATT            chem1_src_g(it,bioge,CO2,ng)%sc_src(1,i+ia-1,j+ja-1) = co2_flux 
+!CCATT         ENDDO
+
+         !DO p=1, np
+         !   IF ( is_point(lon_ponto(p),lat_ponto(p),i+ia-1,j+ja-1,ng) ) THEN
+         !      var(1,p)=radiate_g(ng)%rshort (i+ia-1,j+ja-1)
+         !      var(2,p)=(resp_s_tot(l) - npp(l))/12*1e9
+         !      var(3,p)=resp_s_tot(l)/12*1e9
+         !      var(4,p)=npp(l)/12*1e9
+         !      var(5,p)=resp_p(l)/12*1e9
+         !      var(6,p)=t_soil(l,1)-273.15
+         !      var(7,p)=t_soil(l,2)-273.15
+         !      var(8,p)=t_soil(l,3)-273.15
+         !      var(9,p)=t_soil(l,4)-273.15
+         !      var(10,p)=t_soil(l,5)-273.15
+         !      var(11,p)=t_soil(l,6)-273.15
+         !      
+         !      var(12,p)=radiate_g(ng)%rlong (i+ia-1,j+ja-1)   
+         !      var(13,p)=pcpgl(i+ia-1,j+ja-1)*1000                  
+         !      var(14,p)=temp2(i+ia-1,j+ja-1)                  
+         !      var(15,p)=sqrt(ups2(i+ia-1,j+ja-1)*ups2(i+ia-1,j+ja-1) + vps2(i+ia-1,j+ja-1)*vps2(i+ia-1,j+ja-1))
+         !      var(16,p)=pp2(i+ia-1,j+ja-1)
+         !      var(17 ,p)=rvs2(i+ia-1,j+ja-1)
+         !      !var(12,p)=cs(l,1)
+         !      
+         !      DO v=1,nv
+         !         var_mh(v,p)=var_mh(v,p)+var(v,p)
+         !         var_md(v,p)=var_md(v,p)+var(v,p)
+         !      ENDDO
+
+         !      n_md(p)=n_md(p)+1
+         !      n_mh(p)=n_mh(p)+1
+               
+         !      DO mm=1,2   ! mm=1 => media horaria  mm=2 => media diaria
+         !         if (mm==1 .and. mod(time,3600.0)==0.) then  ! media horaria
+         !            pj=30+p
+         !            WRITE(pj,'(f10.0,1x,100(f15.4,1x))') time,(var_mh(v,p)/n_mh(p), v=1, nv)
+         !            var_mh(:,p)=0.0
+         !            n_mh(p)=0.0
+         !            call flush(pj)
+         !         elseif(mm==2 .and. mod(time,86400.0)==0.) then             ! media diaria
+         !            pj=50+p
+         !            WRITE(pj,'(f10.0,1x,100(f15.4,1x))') time,(var_md(v,p)/n_md(p), v=1, nv)
+         !            var_md(:,p)=0.0
+         !            n_md(p)=0
+         !            call flush(pj)
+         !         endif
+         !      ENDDO
+
+         !  ENDIF
+         !ENDDO
+         
+         !--- Escrevendo o arquivo para imprimir os dados para o modelo off-line ---
+         !p=5   !somente para Torre__km67
+         !! IF (nome_ponto(p)/='Torre__km67_') THEN
+         !!    print*, 'Este ponto nao eh: Torre__km67  eh: '//nome_ponto(p)
+         !!    STOP
+         !! ENDIF
+      
+         !pj=90+p 
+         !IF ( is_point(lon_ponto(p),lat_ponto(p),i+ia-1,j+ja-1,ng) .and. mod(time,dtlong*fat_dtlong)==0 ) THEN
+         !   WRITE(pj,  '(2(f7.1),f14.7,f14.7,2(f10.3),f13.1,f12.6, f10.0,2f14.7,5i4)')  radiate_g(ng)%rshort (i+ia-1,j+ja-1)          &
+         !                                                            ,radiate_g(ng)%rlong (i+ia-1,j+ja-1)           &
+         !                                                            ,pcpgl(i+ia-1,j+ja-1)                          &
+         !                                                            ,temp2(i+ia-1,j+ja-1)                          &
+         !                                                            ,ups2(i+ia-1,j+ja-1)                           &
+         !                                                            ,vps2(i+ia-1,j+ja-1)                           &
+         !                                                            ,pp2(i+ia-1,j+ja-1)                            &
+         !                                                            ,rvs2(i+ia-1,j+ja-1),time,basic_g(ng)%up(2,i+ia-jdim,j+ja-1),basic_g(ng)%up(2,i+ia-1,j+ja-1),i,ia,jdim,j,ja
+         !   call flush(pj)
+         !ENDIF
+         
+         
+         DO k=1,sm_levels
+            
+            !--- Acoplando a umidade do solo ---
+            nsoil = nint(leaf_g(ng)%soil_text(k,i+ia-1,j+ja-1,2))
+!if (iam==10 .and. k==2) then
+!   write(66,'(a,f10.0,1x,16f16.6)')'umidsoil', time,grid_g(ng)%glon(i+ia-1,j+ja-1),grid_g(ng)%glat(i+ia-1,j+ja-1),  &
+!                                              leaf_g(ng)%soil_water(k,i+ia-1,j+ja-1,2:npatch),sthu(l,sm_levels-k+1)*slmsts(nsoil)
+!   call flush (66)            
+!endif       
+            leaf_g(ng)%soil_water(k,i+ia-1,j+ja-1,2:npatch)=sthu(l,sm_levels-k+1)*slmsts(nsoil)
+         ENDDO
+        
+!      ENDDO
+ 
+!      DO j=ja,jz
+!         DO i=ia,iz
+   
+!if (iam==10) then
+!   write(66,'(a,f10.0,1x,16f16.6)')'le_h', time,grid_g(ng)%glon(i+ia-1,j+ja-1),grid_g(ng)%glat(i+ia-1,j+ja-1),  &
+!                                           turb_g(ng)%sflux_r(i+ia-1,j+ja-1),latent_heat(i,j)/alvl,&
+!                                           turb_g(ng)%sflux_t(i+ia-1,j+ja-1),ftl_1(i,j)/cp
+!   call flush (66)            
+!   !if ( abs( () / () ) -1 < 0.20 .or. time<172800. )
+!endif       
+            !--- Acoplando fluxo de calor latente ---
+            turb_g(ng)%sflux_r(i+ia-1,j+ja-1) = latent_heat(i,j)/alvl
+            
+            !--- Acoplando fluxo de calor sensivel ---
+            turb_g(ng)%sflux_t(i+ia-1,j+ja-1) = ftl_1(i,j)/cp
+
+            dens2 = (basic_g(ng)%dn0(1,i+ia-1,j+ja-1) + basic_g(ng)%dn0(2,i+ia-1,j+ja-1)) * .5
+
+
+         !pj=2
+         !pj=90+p 
+         !IF ( is_point(lon_ponto(p),lat_ponto(p),i+ia-1,j+ja-1,ng) .and. mod(time,dtlong*fat_dtlong)==0 ) THEN
+         !   write(pj,'(a,5i3,f10.0,1x,16f16.6)')  'le_h',l,iam,MYNUM,i,j,time,grid_g(ng)%glon(i+ia-1,j+ja-1),grid_g(ng)%glat(i+ia-1,j+ja-1),  &
+         !                                  turb_g(ng)%sflux_r(i+ia-1,j+ja-1),turb_g(ng)%sflux_t(i+ia-1,j+ja-1)
+         !   write(pj,*)
+         !   call flush(pj)
+         !ENDIF
+
+
+   
+!if (iam==10) then
+!   write(66,'(a,f10.0,1x,16f16.6)')'fu_fv', time,grid_g(ng)%glon(i+ia-1,j+ja-1),grid_g(ng)%glat(i+ia-1,j+ja-1), &
+!                                            turb_g(ng)%sflux_u(i+ia-1,j+ja-1),-1*taux_1(i,j)/dens2 , &
+!                                            turb_g(ng)%sflux_v(i+ia-1,j+ja-1),-1*tauy_1(i,j)/dens2
+!   call flush (66)            
+!endif       
+            !--- Acoplando fluxo sflux_u e sflux_v ---
+            turb_g(ng)%sflux_u(i+ia-1,j+ja-1) = -1*taux_1(i,j)/dens2
+
+            turb_g(ng)%sflux_v(i+ia-1,j+ja-1) = -1*tauy_1(i,j)/dens2
+        
+            !--- Acoplando ustar, tstar, rstar ---
+            ustar2 = max(0.000001,sqrt( sqrt( (turb_g(ng)%sflux_u(i+ia-1,j+ja-1))**2 + (turb_g(ng)%sflux_v(i+ia-1,j+ja-1))**2 )))
+            tstar2 = ftl_1(i,j)/(dens2 * cp * ustar2)
+            rstar2 = latent_heat(i,j)/(dens2 * alvl * ustar2)
+
+            DO ip=1,npatch
+               leaf_g(ng)%ustar(i+ia-1,j+ja-1,ip)=ustar2
+               leaf_g(ng)%tstar(i+ia-1,j+ja-1,ip)=tstar2
+               leaf_g(ng)%rstar(i+ia-1,j+ja-1,ip)=rstar2
+            ENDDO
+            
+            !--- fluxo sflux_w ---
+            zts2 = zt(2) * grid_g(ng)%rtgt(i+ia-1,j+ja-1)
+            ths2 = basic_g(ng)%theta(2,i+ia-1,j+ja-1)
+
+            gzotheta = g * zts2 / ths2
+            zoverl = gzotheta * vonk * tstar2 / (ustar2 * ustar2)
+
+            IF (zoverl < 0.) THEN
+               cx = zoverl * sqrt(sqrt(1. - 15. * zoverl))
+            ELSE
+               cx = zoverl / (1.0 + 4.7 * zoverl)
+            ENDIF
+            
+            psin = sqrt((1.-2.86 * cx) / (1. + cx * (-5.39 + cx * 6.998 )))
+
+            !--- Acoplando sflux_w ---
+            ip=2
+            turb_g(ng)%sflux_w(i+ia-1,j+ja-1) = (0.27 * max(6.25 * (1. - cx) * psin,wtol)- 1.18 * cx * psin) * ustar2 * ustar2 * leaf_g(ng)%patch_area(i+ia-1,j+ja-1,ip)    
+
+
+!         ENDDO
+!      ENDDO
+      ENDDO
+
+   !IF (mod(time,frqhis)==0.) THEN
+   !   write (*,*) " aaadffaB outDir=",trim(outDir), " hfilout=",trim(hfilout), " runID=",trim(runID),frqhis,time,gridNx,gridNy
+   !   CALL dump_io( .TRUE. )
+   !ENDIF
+
+   ENDIF  !IF (time==0)
+
+
+call leaf_bcond(mxp,myp,nzg,nzs,npatch,jdim                &    
+     ,leaf_g(ng)%soil_water   ,leaf_g(ng)%sfcwater_mass    &
+     ,leaf_g(ng)%soil_energy  ,leaf_g(ng)%sfcwater_energy  &
+     ,leaf_g(ng)%soil_text    ,leaf_g(ng)%sfcwater_depth   &
+     ,leaf_g(ng)%ustar        ,leaf_g(ng)%tstar            &
+     ,leaf_g(ng)%rstar        ,leaf_g(ng)%veg_albedo       &
+     ,leaf_g(ng)%veg_fracarea ,leaf_g(ng)%veg_lai          &
+     ,leaf_g(ng)%veg_tai                                   &
+     ,leaf_g(ng)%veg_rough    ,leaf_g(ng)%veg_height       &
+     ,leaf_g(ng)%patch_area   ,leaf_g(ng)%patch_rough      &
+     ,leaf_g(ng)%patch_wetind ,leaf_g(ng)%leaf_class       &
+     ,leaf_g(ng)%soil_rough   ,leaf_g(ng)%sfcwater_nlev    &
+     ,leaf_g(ng)%stom_resist  ,leaf_g(ng)%ground_rsat      &
+     ,leaf_g(ng)%ground_rvap  ,leaf_g(ng)%veg_water        &
+     ,leaf_g(ng)%veg_temp     ,leaf_g(ng)%can_rvap         &
+     ,leaf_g(ng)%can_temp     ,leaf_g(ng)%veg_ndvip        &
+     ,leaf_g(ng)%veg_ndvic    ,leaf_g(ng)%veg_ndvif        )
+
+!CALL jules_bcond(mxp,myp,nzg,nzs,npatch,jdim,      &
+!                 radiate_g(ng)%rshort,             &
+!                 radiate_g(ng)%rlong,              &
+!                 radiate_g(ng)%rlongup,            &
+!                 radiate_g(ng)%albedt,             &
+!                 turb_g(ng)%sflux_r,               &
+!                 turb_g(ng)%sflux_t,               &
+!                 turb_g(ng)%sflux_u,               &
+!                 turb_g(ng)%sflux_v,               &
+!                 turb_g(ng)%sflux_w,               &
+!                 )  
+
+if (mynum==120 .and. 1==2) then
+   write(16,*) 'em sfclyr_jules mxp,myp,nzg,nzs,npatch,jdim,',time,  mxp,myp,nzg,nzs,npatch,jdim
+   write(16,*) 'em sfclyr_jules - 8,1f',time                           &
+                        ,radiate_g(ng)%rshort (8+ia-1,2+ja-1)         &
+                        ,radiate_g(ng)%rlong  (8+ia-1,2+ja-1)         &
+                        ,temp2                (8+ia-1,2+ja-1)         &
+                        ,ups2                 (8+ia-1,2+ja-1)         &
+                        ,vps2                 (8+ia-1,2+ja-1)         &
+                        ,pp2                  (8+ia-1,2+ja-1)         &
+                        ,rvs2                 (8+ia-1,2+ja-1)         &
+                        ,pcpgl                (8+ia-1,2+ja-1)
+
+   write(16,*)                                   
+endif
+
+if ( 1==2 .and. time>223140.0 .and. (mynum==120 .or. mynum==121)) then
+!if (mynum==3053 .and. mod(time,3000.)==0) then
+!      write(16,*)
+!do j=1,size(basic_g(ng)%pp,3)
+!   do i=1,size(basic_g(ng)%pp,2)
+!      write(mynum,*) 'i) ',time,i,j,basic_g(ng)%pp(2,i,j)
+!   enddo
+!enddo   
+
+      write(mynum,*)
+      write(mynum,*)'f) ',time                                     ,grid_g(ng)%glon(2,8)   ,grid_g(ng)%glat             (2,8)  ,leaf_g(ng)%soil_water (2,2,8,2) &
+                      ,leaf_g(ng)%sfcwater_mass  (1,2,8,2),leaf_g(ng)%soil_energy(1,2,8,2) ,leaf_g(ng)%sfcwater_energy(1,2,8,2),leaf_g(ng)%soil_text  (2,2,8,2) &
+                      ,leaf_g(ng)%sfcwater_depth (1,2,8,2),leaf_g(ng)%ustar        (2,8,2) ,leaf_g(ng)%tstar            (2,8,2),leaf_g(ng)%rstar        (2,8,2) &
+                      ,leaf_g(ng)%veg_albedo       (2,8,2),leaf_g(ng)%veg_fracarea (2,8,2) ,leaf_g(ng)%veg_lai          (2,8,2),leaf_g(ng)%veg_tai      (2,8,2) &
+                      ,leaf_g(ng)%veg_rough        (2,8,2),leaf_g(ng)%veg_height   (2,8,2) ,leaf_g(ng)%patch_area       (2,8,2),leaf_g(ng)%patch_rough  (2,8,2) &
+                      ,leaf_g(ng)%patch_wetind     (2,8,2),leaf_g(ng)%leaf_class   (2,8,2) ,leaf_g(ng)%soil_rough       (2,8,2),leaf_g(ng)%sfcwater_nlev(2,8,2) &
+                      ,leaf_g(ng)%stom_resist      (2,8,2),leaf_g(ng)%ground_rsat  (2,8,2) ,leaf_g(ng)%ground_rvap      (2,8,2),leaf_g(ng)%veg_water    (2,8,2) &
+                      ,leaf_g(ng)%veg_temp         (2,8,2),leaf_g(ng)%can_rvap     (2,8,2) ,leaf_g(ng)%can_temp         (2,8,2),leaf_g(ng)%veg_ndvip    (2,8,2) &
+                      ,leaf_g(ng)%veg_ndvic        (2,8,2),leaf_g(ng)%veg_ndvif    (2,8,2) ,basic_g(ng)%pp           (31,2,8)  ,basic_g(ng)%up       (31,2,8)   &
+                      ,basic_g(ng)%vp           (31,2,8)  ,radiate_g(ng)%rlong     (2,8)   ,radiate_g(ng)%rlongup       (2,8)  ,radiate_g(ng)%albedt    (2,8)   &
+                      ,turb_g(ng)%sflux_r          (2,8)  ,turb_g(ng)%sflux_t      (2,8)   ,turb_g(ng)%sflux_u          (2,8)  ,turb_g(ng)%sflux_v      (2,8)   &
+                      ,turb_g(ng)%sflux_w          (2,8)  ,basic_g(ng)%wp       (31,2,8)                                             
+   call flush(mynum)
+endif
+
+
+RETURN
+  
+
+
+END SUBROUTINE sfclyr_jules
+
+!*****************************************************************************
+SUBROUTINE jules_bcond(m2,m3,mzg,mzs,npat,jdim,rshort, &
+                       rlong,rlongup,albedt,sflux_r,sflux_t,sflux_u,sflux_v,sflux_w)
+implicit none
+
+integer                          :: m2,m3,mzg,mzs,npat,jdim
+real, dimension(m2,m3)           :: rshort,rlong,rlongup,albedt,sflux_r,sflux_t,sflux_u,sflux_v,sflux_w
+integer                          :: i,j,k
+
+do j = 1,m3
+   rshort      (1,j) = rshort             (2,j)
+   rlong       (1,j) = rlong              (2,j)
+   rlongup     (1,j) = rlongup            (2,j)
+   albedt      (1,j) = albedt             (2,j)
+   sflux_r     (1,j) = sflux_r            (2,j)
+   sflux_t     (1,j) = sflux_t            (2,j)
+   sflux_u     (1,j) = sflux_u            (2,j)
+   sflux_v     (1,j) = sflux_v            (2,j)
+   sflux_w     (1,j) = sflux_w            (2,j)
+
+   rshort      (m2,j) = rshort             (m2-1,j)
+   rlong       (m2,j) = rlong              (m2-1,j)
+   rlongup     (m2,j) = rlongup            (m2-1,j)
+   albedt      (m2,j) = albedt             (m2-1,j)
+   sflux_r     (m2,j) = sflux_r            (m2-1,j)
+   sflux_t     (m2,j) = sflux_t            (m2-1,j)
+   sflux_u     (m2,j) = sflux_u            (m2-1,j)
+   sflux_v     (m2,j) = sflux_v            (m2-1,j)
+   sflux_w     (m2,j) = sflux_w            (m2-1,j)
+enddo
+
+if (jdim == 1) then
+   do i = 1,m2
+      rshort      (i,1) = rshort          (i,2)
+      rlong       (i,1) = rlong           (i,2)
+      rlongup     (i,1) = rlongup         (i,2)
+      albedt      (i,1) = albedt          (i,2)
+      sflux_r     (i,1) = sflux_r         (i,2)
+      sflux_t     (i,1) = sflux_t         (i,2)
+      sflux_u     (i,1) = sflux_u         (i,2)
+      sflux_v     (i,1) = sflux_v         (i,2)
+      sflux_w     (i,1) = sflux_w         (i,2)
+
+      rshort      (i,m3) = rshort          (i,m3-1)
+      rlong       (i,m3) = rlong           (i,m3-1)
+      rlongup     (i,m3) = rlongup         (i,m3-1)
+      albedt      (i,m3) = albedt          (i,m3-1)
+      sflux_r     (i,m3) = sflux_r         (i,m3-1)
+      sflux_t     (i,m3) = sflux_t         (i,m3-1)
+      sflux_u     (i,m3) = sflux_u         (i,m3-1)
+      sflux_v     (i,m3) = sflux_v         (i,m3-1)
+      sflux_w     (i,m3) = sflux_w         (i,m3-1)
+   enddo
+endif
+
+
+return
+
+END SUBROUTINE jules_bcond
+
+!*****************************************************************************
+!--- Esta subrotina tem como finalidade imprimir mensagem caso o RAMSIN nao estiver de acordo
+!--- Com o modelo JULES.
+SUBROUTINE erro_RAMSIN(varName,tam,varJULES,varRecomend)
+   IMPLICIT NONE
+   CHARACTER (LEN=20),  INTENT(IN) :: varName
+   INTEGER,             INTENT(IN) :: tam, varJULES,varRecomend
+   
+   PRINT*, '*********************************************************************************'
+   PRINT*, '*********************************************************************************'
+   PRINT*
+   PRINT*, '    Valor setado em "jules.in" deve ser igual ao do RAMSIN, portanto setar: '
+   PRINT*
+   PRINT*, '               '//varName(1:tam),' = ',varJULES
+   PRINT*
+   
+   IF (varJULES/=varRecomend) THEN
+      PRINT*
+      PRINT*,  '     Atencao!!! o valor recomendado eh: '//varName(1:tam),' = ',varRecomend
+      PRINT*
+      PRINT*
+   ENDIF
+   
+   PRINT*, '*********************************************************************************'
+   PRINT*, '*********************************************************************************'
+
+   STOP
+   RETURN
+END SUBROUTINE erro_RAMSIN
+
+!*****************************************************************************
+!--- Dado um lon e um lat, esta funcao tem como objetivo verificar se o ponto
+!--- x,y corresponde a esta posicao. Utilizada para imprimir sempre o mesmo
+!--- ponto independente do numero de processadores utilizado.
+FUNCTION is_point(lon,lat,i,j,ng)
+   USE mem_grid ,     ONLY : grid_g,deltaxn,deltayn
+
+   IMPLICIT NONE
+   
+   LOGICAL  :: is_point
+   REAL     :: lon,lat,delta
+   INTEGER  :: i,j,ng
+   is_point=.false.
+   
+   if (abs( grid_g(ng)%glon(i,j)-lon ) <= abs( (grid_g(ng)%glon(i,j)-grid_g(ng)%glon(i+1,j) )/2. ) .and. &
+       abs( grid_g(ng)%glat(i,j)-lat ) <= abs( (grid_g(ng)%glat(i,j)-grid_g(ng)%glat(i,j+1) )/2. )            ) is_point=.true.
+   RETURN
+END FUNCTION is_point
+
+!--- HELP ---
+!---Bloco para plotar uma determinada variavel do Jules ---
+!DSM{
+  !USE time_loc, ONLY :  latitude,longitude,time
+
+!DO n=1,ntiles
+!   DO k=1,tile_pts(n)
+!      l = tile_index(k,n)
+!      j=(land_index(l)-1)/row_length + 1
+!      i = land_index(l) - (j-1)*row_length
+!      if (abs(-38.4020-longitude(i,j))<0.001 .and. abs(-16.026188-latitude(i,j))<0.001) then
+!         write(68,*) "1-wwww",time,rhokh_tile(l,:)
+!         call flush(68)
+!      endif
+!  END DO
+!END DO
+!DSM}
+
+!
+! function gbmTileDiag2
+! Internal procedure in module output_mod.
+! Get gridbox mean of a tile variable.
+
+
+
+!################################################################################
+!################################################################################
+!################################################################################
+  SUBROUTINE gbmTileDiag2( inval,tile_frac,outval )
+
+  USE ancil_info, ONLY :  &
+!  imported scalars with intent(in)
+    land_pts,ntiles  &
+!  imported arrays with intent(in)
+   ,tile_index,tile_pts
+
+!-------------------------------------------------------------------------------
+  IMPLICIT NONE
+
+  REAL ::   &!  function result
+    outval(land_pts)  !  function result
+
+  REAL, INTENT(in) ::  &!  in arrays
+    inval(land_pts,ntiles)     &!  input tile field.
+   ,tile_frac(land_pts,ntiles)  !  tile fractions
+
+!  LOGICAL, INTENT(in), OPTIONAL :: tileMask(ntiles)  !  mask indicating which
+!                         tiles are to be included in average. If not given,
+!                         all tiles are used.
+!                         Introduced for canopy snow diagnostics.
+
+  INTEGER ::  &!  local SCALARS
+    i,p,t  !  work/loop counters
+
+  LOGICAL :: tmask(ntiles) !  mask indicating which tiles are to be included in average.
+
+!-------------------------------------------------------------------------------
+! Set mask.
+!  IF ( PRESENT( tileMask ) ) THEN
+!    tMask(:) = tileMask(:)
+!  ELSE
+    tMask(:) = .TRUE.
+!  ENDIF
+
+! Initialise the average.
+  outval(:) = 0.0
+
+  DO t=1,ntiles
+    IF ( tMask(t) ) THEN
+      DO i=1,tile_pts(t)
+        p = tile_index(i,t)
+        outval(p) = outval(p) + tile_frac(p,t)*inval(p,t)
+      ENDDO
+    ENDIF
+  ENDDO
+
+  END SUBROUTINE  gbmTileDiag2

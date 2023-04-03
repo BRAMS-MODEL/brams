@@ -1,0 +1,24 @@
+20    Spc1    Fact1  Spc2    Fact2 Spc3    Fact3 Spc4    Fact4 Spc5    Fact5
+O3    go3     1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+NO    no      1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+NO2   no2     1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+HNO3  hno3    1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+SO2   so2     1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+CO    co      1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+HO    oh      1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+CH4   ch4_c   1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+ETH   c2h6    1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+ALKA  c3h8    1.0    c2h5oh  1.0   ch3oh   1.0   NONE    1.0   NONE    1.0
+ALKE  c2h4    1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+BIO   c5h8    1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+HCHO  hcho    1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+ALD   ald2    1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0      
+ONIT  onit    1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+PAN   pan     1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+ORA2  ch3ooh  1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+MO2   ch3oh   1.0    NONE    1.0   NONE    1.0   NONE    1.0   NONE    1.0
+BBURN aermr09 1.0    aermr07 1.0   aermr10 1.0   aermr08 1.0   aermr11 1.0
+MARIN aermr01 1.0    aermr02 1.0   aermr03 1.0   NONE    0.0   NONE    0.0
+
+
+

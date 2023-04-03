@@ -1,0 +1,8 @@
+#!/bin/sh
+
+cd bin
+rm -f gf.x
+make clean
+make 
+cd ../
+ln -fs bin/gf.x gf.x

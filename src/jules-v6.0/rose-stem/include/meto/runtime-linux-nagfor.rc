@@ -1,0 +1,385 @@
+###############################################################################
+## Build jobs
+###############################################################################
+# Linux nagfor build jobs
+    [[METO_LINUX_NAGFOR_BUILD]]
+        inherit = METO_LINUX_BUILD
+        [[[environment]]]
+            JULES_PLATFORM = meto-linux-nagfor
+
+    [[fcm_make_meto_linux_nagfor_debug]]
+        inherit = METO_LINUX_NAGFOR_BUILD
+        [[[environment]]]
+            JULES_BUILD = debug
+            JULES_OMP = noomp
+
+###############################################################################
+## Compute jobs
+###############################################################################
+# Family for Loobos jobs with the nagfor compiler
+    [[METO_LINUX_NAGFOR_LOOBOS]]
+        inherit = LOOBOS, METO_LINUX_COMPUTE, METO_LINUX_1_TASK, METO_LINUX_1_THREAD
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_linux_nagfor_debug
+
+    [[meto_linux_nagfor_loobos_gl7]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl7
+
+    [[meto_linux_nagfor_loobos_gl4]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl4
+
+    [[meto_linux_nagfor_loobos_gl4_cable]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl4
+            ROSE_APP_OPT_CONF_KEYS=cable
+
+    [[meto_linux_nagfor_loobos_gl8]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl8
+
+    [[meto_linux_nagfor_loobos_gl8_medlyn]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl8_medlyn
+
+    [[meto_linux_nagfor_loobos_vegdrag]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_vegdrag
+
+    [[meto_linux_nagfor_loobos_euro4]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_euro4
+
+    [[meto_linux_nagfor_loobos_forecast]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_forecast
+
+    [[meto_linux_nagfor_loobos_ukv]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_ukv
+
+    [[meto_linux_nagfor_loobos_trif_spinup]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_trif_spinup
+
+    [[meto_linux_nagfor_loobos_trif]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_trif
+            DUMP_FILE = ../meto_linux_nagfor_loobos_trif_spinup/output/meto_linux_nagfor_loobos_trif_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_julesc_spinup]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_julesc_spinup
+
+    [[meto_linux_nagfor_loobos_julesc]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_julesc
+            DUMP_FILE = ../meto_linux_nagfor_loobos_julesc_spinup/output/meto_linux_nagfor_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_jules_c1p1]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_c1p1
+            DUMP_FILE = ../meto_linux_nagfor_loobos_julesc_spinup/output/meto_linux_nagfor_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_jules_c1p1_fire]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_c1p1_fire
+            DUMP_FILE = ../meto_linux_nagfor_loobos_julesc_spinup/output/meto_linux_nagfor_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_jules_layeredcn_spinup]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_layeredcn_spinup
+
+    [[meto_linux_nagfor_loobos_jules_layeredcn]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_layeredcn
+            DUMP_FILE = ../meto_linux_nagfor_loobos_jules_layeredcn_spinup/output/meto_linux_nagfor_loobos_jules_layeredcn_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_jules_cn_spinup]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_cn_spinup
+
+    [[meto_linux_nagfor_loobos_jules_cn]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_cn
+            DUMP_FILE = ../meto_linux_nagfor_loobos_jules_cn_spinup/output/meto_linux_nagfor_loobos_jules_cn_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_jules_es_1p0_spinup]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_es_1p0_spinup
+
+    [[meto_linux_nagfor_loobos_jules_es_1p0]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_es_1p0
+            DUMP_FILE = ../meto_linux_nagfor_loobos_jules_es_1p0_spinup/output/meto_linux_nagfor_loobos_jules_es_1p0_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_crops]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crops
+
+    [[meto_linux_nagfor_loobos_prescribe_sthuf]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_prescribe_sthuf
+
+    [[meto_linux_nagfor_loobos_irrig]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_irrig
+
+    [[meto_linux_nagfor_loobos_irrig_nirrtile]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_irrig_nirrtile
+
+    [[meto_linux_nagfor_loobos_fire_spinup]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_fire_spinup
+
+    [[meto_linux_nagfor_loobos_fire]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_fire
+            DUMP_FILE = ../meto_linux_nagfor_loobos_fire_spinup/output/meto_linux_nagfor_loobos_fire_spinup.dump.19971231.82800.nc
+
+    [[meto_linux_nagfor_loobos_daily_disagg]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_daily_disagg
+
+    [[meto_linux_nagfor_loobos_crm1_traitF]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm1_traitF
+
+    [[meto_linux_nagfor_loobos_crm4_traitF]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm4_traitF
+
+    [[meto_linux_nagfor_loobos_crm5_traitF]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm5_traitF
+
+    [[meto_linux_nagfor_loobos_crm6_traitF]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitF
+
+    [[meto_linux_nagfor_loobos_crm6_traitT]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitT
+
+    [[meto_linux_nagfor_loobos_crm6_traitT_farquhar]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitT
+            ROSE_APP_OPT_CONF_KEYS = farquhar
+
+    [[meto_linux_nagfor_loobos_crm6_traitF_srfT]]
+        inherit = METO_LINUX_NAGFOR_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitF_srfT
+
+
+###############################################################################
+## Housekeeping jobs
+###############################################################################
+    [[METO_LINUX_NAGFOR_HOUSEKEEPING]]
+        inherit = HOUSEKEEPING, METO_LINUX
+
+    [[housekeep_meto_linux_nagfor_loobos_gl7]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_gl7
+
+    [[housekeep_meto_linux_nagfor_loobos_gl4]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_gl4
+            
+    [[housekeep_meto_linux_nagfor_loobos_gl8]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_gl8
+            
+    [[housekeep_meto_linux_nagfor_loobos_gl8_medlyn]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_gl8_medlyn
+            
+    [[housekeep_meto_linux_nagfor_loobos_vegdrag]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_vegdrag
+            
+    [[housekeep_meto_linux_nagfor_loobos_euro4]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_euro4
+
+    [[housekeep_meto_linux_nagfor_loobos_forecast]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+           DIR1 = ../meto_linux_nagfor_loobos_forecast
+
+    [[housekeep_meto_linux_nagfor_loobos_ukv]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_ukv
+
+    [[housekeep_meto_linux_nagfor_loobos_trif_spinup]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_trif_spinup
+
+    [[housekeep_meto_linux_nagfor_loobos_trif]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_trif
+
+    [[housekeep_meto_linux_nagfor_loobos_julesc_spinup]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_julesc_spinup
+
+    [[housekeep_meto_linux_nagfor_loobos_julesc]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_julesc
+
+    [[housekeep_meto_linux_nagfor_loobos_jules_c1p1]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_c1p1
+          
+    [[housekeep_meto_linux_nagfor_loobos_jules_c1p1_fire]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_c1p1_fire
+
+    [[housekeep_meto_linux_nagfor_loobos_jules_layeredcn_spinup]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_layeredcn_spinup
+
+    [[housekeep_meto_linux_nagfor_loobos_jules_layeredcn]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_layeredcn
+
+    [[housekeep_meto_linux_nagfor_loobos_jules_cn_spinup]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_cn_spinup
+
+    [[housekeep_meto_linux_nagfor_loobos_jules_cn]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_cn
+
+    [[housekeep_meto_linux_nagfor_loobos_jules_es_1p0_spinup]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_es_1p0_spinup
+
+    [[housekeep_meto_linux_nagfor_loobos_jules_es_1p0]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_jules_es_1p0
+
+    [[housekeep_meto_linux_nagfor_loobos_crops]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crops
+
+    [[housekeep_meto_linux_nagfor_loobos_prescribe_sthuf]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_prescribe_sthuf
+
+    [[housekeep_meto_linux_nagfor_loobos_irrig]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_irrig
+
+    [[housekeep_meto_linux_nagfor_loobos_irrig_nirrtile]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_irrig_nirrtile
+
+    [[housekeep_meto_linux_nagfor_loobos_fire_spinup]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_fire_spinup
+
+    [[housekeep_meto_linux_nagfor_loobos_fire]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_fire
+
+    [[housekeep_meto_linux_nagfor_loobos_daily_disagg]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_daily_disagg
+
+    [[housekeeping_meto_linux_nagfor_loobos_crm1_traitF]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crm1_traitF
+
+    [[housekeeping_meto_linux_nagfor_loobos_crm4_traitF]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crm4_traitF
+
+    [[housekeeping_meto_linux_nagfor_loobos_crm5_traitF]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crm5_traitF
+
+    [[housekeeping_meto_linux_nagfor_loobos_crm6_traitF]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crm6_traitF
+
+    [[housekeeping_meto_linux_nagfor_loobos_crm6_traitT]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crm6_traitT
+
+    [[housekeeping_meto_linux_nagfor_loobos_crm6_traitT_farquhar]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crm6_traitT_farquhar
+
+    [[housekeeping_meto_linux_nagfor_loobos_crm6_traitF_srfT]]
+        inherit = METO_LINUX_NAGFOR_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_linux_nagfor_loobos_crm6_traitF_srfT

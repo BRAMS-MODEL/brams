@@ -1,0 +1,14 @@
+  $MODEL
+   !Prefix for NASA = GEOS.fp.fcst.inst3_3d_asm_Cp.
+   !Prefix for NCEP = gfs.t00z.pgrb2.0p25.f
+   !PREFIX    = '/home/lufla/projetos/QQ/datain/gfs.t00z.pgrb2.0p25.f' 
+   PREFIX    = '/home/lufla/run/tst/datain/GEOS/GEOS.fp.fcst.inst3_3d_asm_Cp.',
+   OUTFOLDER = '/home/lufla/run/tst/datain/GEOS/',
+   IMONTH1   = 02,      ! Month
+   IDATE1    = 13,      ! Day
+   IYEAR1    = 2020,    ! Year
+   ITIME1    = 0000,    ! GMT of initial
+   NTIMES    = 9,       ! Number os outputs
+   TINCREM   = 3,       !output increment in hours NCEP=6, NASA=3
+   SOURCE    = 'NASA' ! 'NCEP','NASA'
+  $END

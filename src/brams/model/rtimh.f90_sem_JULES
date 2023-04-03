@@ -1,0 +1,859 @@
+!############################# Change Log ##################################
+! 5.0.0
+!
+!###########################################################################
+!  Copyright (C)  1990, 1995, 1999, 2000, 2003 - All Rights Reserved
+!  Regional Atmospheric Modeling System - RAMS
+!###########################################################################
+
+module ModTimestep
+contains
+subroutine timestep(OneGrid)
+
+  use ModMessageSet, only: &
+       PostRecvSendMsgs, &
+       WaitRecvMsgs
+
+  use ModAcoust, only: acoustic_new
+
+  use ModGrid, only: &
+       Grid
+  
+  use mem_basic, only: &
+       basic_g  ! INTENT(INOUT)
+
+  use node_mod, only: &
+       mzp, mxp, myp,  & ! INTENT(IN)
+       ia, iz, ja, jz, & ! INTENT(IN)
+       i0, j0,         & ! INTENT(IN)
+       izu, jzv,       & ! INTENT(IN)
+       mynum,          & ! INTENT(IN)
+       ibcon,          & ! INTENT(IN)
+       nmachs            ! INTENT(IN)
+
+  !use mem_radiate, only: ! Not used
+
+  use mem_cuparm, only: &
+       NNQPARM, & ! INTENT(IN)
+       IF_CUINV   ! INTENT(IN)
+
+  use mem_varinit, only: &
+       NUD_TYPE ! INTENT(IN)
+
+  use mem_turb, only: &
+       IF_URBAN_CANOPY, & ! INTENT(IN)
+       ihorgrad           ! INTENT(IN)
+
+  use mem_oda,   only: &
+       if_oda ! INTENT(IN)
+
+  use micphys,   only: &
+       level ! INTENT(IN)
+
+  use mem_grid, only: &
+       ngrids,     & ! INTENT(IN)
+       ngrid,      & ! INTENT(IN)
+       npatch,     & ! INTENT(IN)
+       time,       & ! INTENT(IN)
+       dtlong,     & ! INTENT(IN)
+       dtlongn,    & ! INTENT(IN)
+       iyear1,     & ! INTENT(IN)
+       imonth1,    & ! INTENT(IN)
+       idate1,     & ! INTENT(IN)
+       grid_g,     & ! INTENT(INOUT)
+       nxtnest,    & ! INTENT(IN)
+       if_adap,    & ! INTENT(IN)
+       dtlt,       & ! INTENT(IN)
+       istp,       & ! INTENT(IN)
+       jdim,       & ! INTENT(IN)
+       nzp,        & ! INTENT(IN)
+       f_thermo_e, & ! INTENT(IN)
+       f_thermo_w, & ! INTENT(IN)
+       f_thermo_s, & ! INTENT(IN)
+       f_thermo_n, &   ! INTENT(IN)
+       
+!--(DMK-CCATT-INI)-----------------------------------------------------
+       zt,         &
+       zm,         &
+       dzt,        &
+       nzpmax,     &
+       itime1,     &
+!--(DMK-CCATT-FIM)-----------------------------------------------------
+       
+       vveldamp    ! INTENT(IN)
+
+  use shcu_vars_const, only: & ! For Shallow Cumulus Paramet.
+       NNSHCU ! INTENT(IN)
+
+  use mem_scalar, only: & ! For SiB
+       scalar_g ! INTENT(IN)
+
+  use mem_leaf, only: & ! For SiB
+       ISFCL ! INTENT(IN)
+
+!--(DMK-CCATT-INI)-----------------------------------------------------
+!  ! CAT
+!  use catt_start, only: &
+!       CATT ! INTENT(IN)
+!
+!  ! For CATT
+!  use emission_source_map, only: &
+!       burns ! Subroutine
+!--(DMK-CCATT-FIM)---------------------------------------------------------
+
+ ! TEB_SPM
+  use teb_spm_start, only: &
+       TEB_SPM ! INTENT(IN)
+
+  ! For TEB_SPM
+  use mem_emiss, only: &
+       ichemi,         & ! INTENT(IN)
+       isource           ! INTENT(IN)
+
+  ! ALF
+  ! Necessary in new advection scheme
+  use advect_kit, only : &
+       calc_advec          ! Subroutine
+
+  ! For specific optimization depending the type of machine
+  use machine_arq, only: &
+       machine ! INTENT(IN)
+
+  
+!--(DMK-CCATT-INI)-----------------------------------------------------
+  use rconstants, only:  &
+       g,                & ! (IN)
+       cp,               & ! (IN)
+       cpor,             & ! (IN)
+       p00,              & ! (IN)
+       rgas,             & ! (IN)
+       pi180               ! (IN)
+
+  use ccatt_start, only: &
+       ccatt               ! (IN)
+
+  use mem_chem1, only: &
+       nvert_src=>chem1_src_z_dim_g, & ! (IN)
+       chem1_g,                      & ! (INOUT)
+       nsrc,                         & ! (IN)
+       chem1_src_g,                  & ! %sc_src(INOUT)
+       chemistry,                    & ! (IN)
+       split_method,                 & ! (IN)
+       n_dyn_chem,                   &
+       ntimes_src
+
+  use mem_aer1, only:                  &
+       aerosol, &
+       aer1_g,                         &! %sc_src(INOUT)
+       aer_nvert_src=>aer1_src_z_dim_g  ! (IN)
+
+  use mem_plume_chem1, only: &
+       plume_mean_g            ! %flam_frac(IN), %fire_size(IN)
+
+  use mem_stilt, only: &
+       iexev,          &  ! (IN)
+       imassflx,       &  ! (IN)
+       stilt_g            ! %dnp (IN)
+       
+  use mem_radiate, only: &
+       radiate_g
+
+  use chem_sources, only :     &
+       alloc_emiss_cycle,      &  ! Subroutine
+       init_actual_time_index, &  ! Subroutine
+       emiss_cycle,            &  ! (INOUT)
+       emiss_cycle_alloc,      &
+       srcmapfn                   ! (IN)
+       
+  use ChemSourcesDriver, only: &
+  	sources_driver            ! Subroutine     
+
+  use ChemDryDepDriver, only: &
+  	drydep_driver             ! Subroutine     
+	
+  use module_chemistry_driver, only: &
+  	chemistry_driver
+!--(DMK-CCATT-OLD)-----------------------------------------------------
+  use radiation, only: radiate ! Subroutine
+!--(DMK-CCATT-FIM)-----------------------------------------------------
+  
+  use ModTimeStamp, only: SynchronizedTimeStamp, TimeStamp
+
+  use cuparm_grell3, only: cuparm_grell3_catt
+
+  use digitalFilter, only: 	&
+  applyDigitalFilter, 		& ! subroutine
+  fileNameDF,			& ! intent(inout) - file control
+  dfVars, &
+  applyDF
+  
+!--(DMK-CCATT-INI)-----------------------------------------------------------
+   USE monotonic_adv, only: & 
+       advmnt_driver, &        ! subroutine
+       advmnt
+!--(DMK-CCATT-FIM)-----------------------------------------------------------
+
+  implicit none
+
+  type(Grid), pointer :: OneGrid
+
+  ! execution time instrumentation
+  include "tsNames.h"
+
+  INTEGER, PARAMETER :: acoshdp = 0 
+
+
+  !        +-------------------------------------------------------------+
+  !        |   Timestep driver for the hybrid non-hydrostatic time-split |
+  !        |      model.                                                 |
+  !        +-------------------------------------------------------------+
+
+!!$  call SynchronizedTimeStamp(TS_OUTSIDE)
+
+  !  Zero out all tendency arrays.   
+  !--------------------------------
+
+  call TEND0()          
+
+!--(DMK-CCATT-INI)--------------------------------------------------------
+  if (ccatt == 1) THEN
+
+     !- emission 
+
+     !- allocation for diurnal cycle of emission arrays   and
+     !- actual_time_index on nodes
+     if( (.not. emiss_cycle_alloc) .and.    &
+         (chemistry > 0) .and.              &
+          trim(srcmapfn) .ne.  'NONE' .and. &
+ 	  trim(srcmapfn) .ne.  'none') then
+
+	call alloc_emiss_cycle(mxp,myp,ngrids,nsrc)
+!	call alloc_emiss_cycle(mmxp,mmyp,ngrids,nsrc)
+
+        call init_actual_time_index(nsrc,ntimes_src)
+         
+     endif
+
+        call sources_driver(mzp,mxp,myp,ia,iz,ja,jz,                                 &
+                            g,cp,cpor,p00,rgas,pi180,                                & 
+                            radiate_g(ngrid)%cosz,basic_g(ngrid)%theta,              &
+                            basic_g(ngrid)%pp,basic_g(ngrid)%pi0,basic_g(ngrid)%rv,  &
+                            basic_g(ngrid)%dn0,basic_g(ngrid)%up,basic_g(ngrid)%vp,  & !srf-AWE          
+	  		    time,iyear1,imonth1,idate1,itime1,dtlt,                  &
+                            grid_g(ngrid)%rtgt,grid_g(ngrid)%lpw,grid_g(ngrid)%glat, &
+                            grid_g(ngrid)%glon,zt,zm,dzt,nzpmax,                     &
+                            nvert_src(:,ngrid),                                      &
+                            chem1_g(:,ngrid),                                        &
+                            chem1_src_g(:,:,:,ngrid),                                &
+                            aer1_g(:,:,ngrid),                                       &
+                            aer_nvert_src(:,ngrid),                                  &
+                            plume_mean_g(:,ngrid),                                   &
+                            stilt_g(ngrid)%dnp,                                      &
+                            emiss_cycle(:,ngrid))
+
+     
+     !- large and subgrid scale forcing for shallow and deep cumulus
+
+  endif
+!--(DMK-CCATT-FIM)--------------------------------------------------------
+
+  IF( NNQPARM(ngrid) >=2 .OR. NNSHCU(ngrid)==2 ) CALL prepare_lsf(1)
+
+!!$  call TimeStamp(TS_DINAMICS)
+
+!--(DMK-CCATT-INI)--------------------------------------------------------
+!  if (CATT==1) then
+!     call burns(ngrid, mzp, mxp, myp, ia, iz, ja, jz, &
+!          scalar_g, time, iyear1, imonth1, idate1)
+!  endif
+!--(DMK-CCATT-FIM)--------------------------------------------------------
+
+  !  Thermodynamic diagnosis   
+  !--------------------------------
+  if (level/=3) then
+     call THERMO(mzp,mxp,myp,ia,iz,ja,jz,'SUPSAT') 
+  endif
+
+!--(DMK-CCATT-INI)--------------------------------------------------------
+  !ML/SRF---------- David's mass conservation fix ------------------------
+  if (iexev == 2) &
+     call exevolve(mzp,mxp,myp,ngrid,ia,iz,ja,jz,izu,jzv,jdim,mynum,dtlt,'ADV')
+!--(DMK-CCATT-FIM)--------------------------------------------------------
+
+  !  Radiation parameterization
+  !--------------------------------
+  call RADIATE(mzp,mxp,myp,ia,iz,ja,jz,mynum) 
+
+  !  Surface layer, soil and veggie model
+  !----------------------------------------
+  if (isfcl<=2) then
+     call SFCLYR(mzp,mxp,myp,ia,iz,ja,jz,ibcon)
+  elseif (isfcl==3) then
+     call sfclyr_sib(mzp,mxp,myp,ia,iz,ja,jz,ibcon)
+  endif
+
+  ! SiB for BRAMS
+  ! CO2  bio source
+  if (ISFCL==3) then
+     call co2_biosource(mzp,mxp,myp,ia,iz,ja,jz,ngrid,  &
+          scalar_g(1,ngrid)%sclt(1),basic_g(ngrid)%dn0,grid_g(ngrid)%rtgt)
+  endif
+  !----------------------------------------
+
+!--(DMK-CCATT-INI)--------------------------------------------------------
+  if (CCATT==1) then
+!--(DMK-CCATT-OLD)--------------------------------------------------------
+!  if (CATT==1) then
+!--(DMK-CCATT-FIM)--------------------------------------------------------
+     call drydep_driver(mzp,mxp,myp,ia,iz,ja,jz)     
+  endif
+
+!!$  call TimeStamp(TS_PHYSICS)
+  
+  !srf- large and subgrid scale forcing for shallow and deep cumulus
+  IF( NNQPARM(ngrid) >=2 .OR. NNSHCU(ngrid)==2 )CALL prepare_lsf(2)
+
+  !  Send boundaries to adjoining nodes
+  !-------------------------------------------
+  if (nmachs > 1) then
+     call PostRecvSendMsgs(OneGrid%SelectedGhostZoneSend, OneGrid%SelectedGhostZoneRecv)
+  endif
+
+  !  Coriolis terms
+  !  ----------------------------------------
+  call CORLOS(mzp,mxp,myp,i0,j0,ia,iz,ja,jz,izu,jzv) 
+
+  !  Velocity advection
+  !----------------------------------------
+  ! Use Optmized advection only in SX-6, for the moment
+  if (machine==0) then
+     ! If Generic IA32 use old Advction Scheme
+     call ADVECTc('V',mzp,mxp,myp,ia,iz,ja,jz,izu,jzv,mynum)
+  elseif (machine==1) then
+     ! Using optmized advection scheme only in SX-6
+     call calc_advec('V',ngrid,mzp,mxp,myp)
+  endif
+!!$  call TimeStamp(TS_DINAMICS)
+
+  !  Cumulus parameterization
+  !----------------------------------------
+  if (NNQPARM(ngrid)==1 .or. IF_CUINV==1) then
+     call cuparm()      
+  end if
+
+  !  Urban canopy parameterization
+  !----------------------------------------
+  if (IF_URBAN_CANOPY==1) call urban_canopy()      
+
+  !  Analysis nudging and boundary condition
+  !------------------------------------------
+!!$  call TimeStamp(TS_PHYSICS)
+  if (NUD_TYPE>0) call DATASSIM()  
+!!$  call TimeStamp(TS_DINAMICS)
+
+  !  Observation data assimilation 
+  !----------------------------------------
+  if (IF_ODA==1) call oda_nudge()  
+!!$  call TimeStamp(TS_PHYSICS)
+
+  !  Nested grid boundaries
+  !----------------------------------------
+  if (nxtnest(ngrid)>=1) call nstbdriv()  
+
+  !  Rayleigh friction for theta
+  !----------------------------------------
+  call RAYFT()           
+
+  !  Get the overlap region between parallel nodes
+  !---------------------------------------------------
+  if (nmachs > 1) then      
+     call WaitRecvMsgs(OneGrid%SelectedGhostZoneSend, OneGrid%SelectedGhostZoneRecv)
+  endif
+!--(DMK-CCATT-INI)------------------------------------------------------------------
+  ! Exner function correction
+  !----------------------------------------
+  if (iexev == 2) &
+  	call exevolve(mzp,mxp,myp,ngrid,ia,iz,ja,jz,izu,jzv,jdim,mynum,dtlt,'THA')
+!--(DMK-CCATT-FIM)------------------------------------------------------------------
+
+  !  Sub-grid diffusion terms
+  !----------------------------------------
+  if ((if_adap==0) .and. (ihorgrad==2)) then
+     call diffuse_brams31() !call optimized subroutine
+  else
+     call diffuse()
+  endif
+
+  IF( NNQPARM(ngrid) >=2 .OR. NNSHCU(ngrid)==2 ) CALL prepare_lsf(3)
+
+  !  Velocity advection
+  !----------------------------------------
+  ! Use Optmized advection only in SX-6, for the moment
+  if (machine==0) then
+
+!--(DMK-CCATT-INI)-----------------------------------------------------------
+      IF(advmnt >= 1) THEN 
+      !-srf monotonic advection scheme
+         call advmnt_driver('T',mzp,mxp,myp,ia,iz,ja,jz,izu,jzv,mynum)
+         if(advmnt >= 2) &
+            CALL ADVECTc('T',mzp,mxp,myp,ia,iz,ja,jz,izu,jzv,mynum)
+      ELSE
+         CALL ADVECTc('T',mzp,mxp,myp,ia,iz,ja,jz,izu,jzv,mynum)
+      ENDIF     ! If Generic IA32 use old Advction Scheme
+!--(DMK-CCATT-OLD)-----------------------------------------------------------
+!     ! If Generic IA32 use old Advction Scheme
+!     call ADVECTc('T',mzp,mxp,myp,ia,iz,ja,jz,izu,jzv,mynum)
+!--(DMK-CCATT-FIM)-----------------------------------------------------------
+
+  elseif (machine==1) then
+     ! Using optmized advection scheme only in SX-6
+     if (ngrid<=2) then
+        call calc_advec('T',ngrid,mzp,mxp,myp)
+     else
+        call ADVECTc('T',mzp,mxp,myp,ia,iz,ja,jz,izu,jzv,mynum)
+     endif
+  endif
+
+!--(DMK-CCATT-INI)-----------------------------------------------------
+  ! STILT-BRAMS coupling (ML)
+  if (imassflx == 1) &
+  	call prep_advflx_to_stilt(mzp,mxp,myp,ia,iz,ja,jz,ngrid)
+!--(DMK-CCATT-FIM)-----------------------------------------------------
+
+  !- large and subgrid scale forcing for shallow and deep cumulus
+  IF(  NNQPARM(ngrid) >=2 .OR. NNSHCU(ngrid)==2 ) CALL prepare_lsf(4)
+!!$  call TimeStamp(TS_DINAMICS)
+  
+  !srf ######### Cumulus parameterization by Grell #########################
+  !srf                   Deep Convection scheme
+  
+  IF(acoshdp == 0 ) THEN
+
+     !- cumulus parameterization by G. Grell 
+     !                    Deep Convection scheme
+     !- call deep first, if there is deep convection , turn off shallow.
+        IF(NNQPARM(ngrid)==2) CALL CUPARM_GRELL_CATT(1) 
+     !
+     !                    Shallow Convection scheme
+        IF(NNSHCU(ngrid)==2 ) CALL CUPARM_GRELL_CATT(2) 
+  
+     !- G3d and GD-FIM
+     IF (NNQPARM(ngrid)==3 .OR. NNQPARM(ngrid)==4) then
+        CALL CUPARM_GRELL3_CATT(OneGrid, 1,NNQPARM(ngrid)) 
+     end IF
+
+     ELSEIF(acoshdp == 1 ) THEN
+
+     !                    Shallow Convection scheme
+        IF(NNSHCU(ngrid)==2 .AND. NNQPARM(ngrid).EQ.2) CALL CUPARM_GRELL_CATT(2) 
+
+        CALL prepare_lsf(5)
+        
+	!- call deep first, if there is deep convection , turn off shallow.
+        IF(NNQPARM(ngrid)==2) CALL CUPARM_GRELL_CATT(1) 
+
+     ENDIF
+
+!--(DMK-CCATT-INI)-----------------------------------------------------
+  !- task 2:  NO production by "eclair" 
+  if (ccatt == 1) &
+     call chemistry_driver(mzp,mxp,myp,ia,iz,ja,jz,2,50)
+
+  !- CATT & Chemistry == CCATT
+  !----------------------------------------
+  if (ccatt==1 .and. split_method== 'PARALLEL' .and. n_dyn_chem==1) then
+     ! task 3 : production/loss by chemical processes and inclusion of the 
+     ! chemistry tendency at the total tendency
+     CALL chemistry_driver(mzp,mxp,myp,ia,iz,ja,jz,3,50)
+  endif
+  if (ccatt==1 ) then
+  !- MP 21/02/08
+     ! task 4 : mass transfer between gas and liquid
+     call chemistry_driver(mzp,mxp,myp,ia,iz,ja,jz,4,50)
+  endif
+!--(DMK-CCATT-FIM)-----------------------------------------------------
+
+  !---------------------------------------------------
+  ! Shallow  cumulus parameterization by Souza
+  if (NNSHCU(ngrid)==1) call SHCUPA()
+  !---------------------------------------------------
+
+  !---------------------------------------------------
+  !Cumulus parameterization by Grell
+  !if (NNQPARM(ngrid)==2 .and. CATT==0) call CUPARM_GRELL()
+  !---------------------------------------------------
+
+  if (TEB_SPM==1) then
+     ! Update urban emissions
+     !----------------------------------------
+     if (isource==1) then
+        call sources_teb(mzp, mxp, myp, ia, iz, ja, jz, ngrid, ngrids)
+     endif
+     !  Update chemistry
+     !----------------------------------------
+     if (ichemi==1) then
+        call ozone(mzp, mxp, myp, ia, iz, ja, jz, ngrid, dtlt)
+     endif
+  endif
+!!$  call TimeStamp(TS_PHYSICS)
+
+  !  Update scalars
+  !----------------------------------------
+  call PREDTR()          
+
+  !  Moisture variables positive definite
+  !----------------------------------------
+  call negadj1(mzp,mxp,myp) 
+!!$  call TimeStamp(TS_DINAMICS)
+
+  !  Microphysics
+  !----------------------------------------
+  if (level==3) then
+     if (machine==1 .and. TEB_SPM==0) then
+        ! Optimized version only for SX-6
+        call micro_opt()
+     else
+        ! Original Version used in a Generic IA32 machine
+        call micro()
+     endif
+  endif
+
+!--(DMK-CCATT-INI)-----------------------------------------------------------------
+  !----------------------------------------
+  !- chemistry - microphysics tranfers - sedimentation and tranfer from clouds to rain
+  if (ccatt==1) then
+     ! task 5 : sedimentation and mass transfer between clouds and rain 
+     call chemistry_driver(mzp,mxp,myp,ia,iz,ja,jz,5,50)
+  endif
+  !- end change MP_0808     
+!--(DMK-CCATT-FIM)-----------------------------------------------------------------
+
+  !  Thermodynamic diagnosis
+  !----------------------------------------
+  if (level/=3) then
+     call THERMO(mzp,mxp,myp,1,mxp,1,myp,'MICRO') 
+  endif
+!!$  call TimeStamp(TS_PHYSICS)
+!--(DMK-CCATT-INI)-----------------------------------------------------------------
+  ! Right before calling "TRSETS", add a function call:
+  if (iexev == 2) &
+  	call exevolve(mzp,mxp,myp,ngrid,ia,iz,ja,jz,izu,jzv,jdim,mynum,dtlt,'THS')
+!--(DMK-CCATT-FIM)-----------------------------------------------------------------
+
+  !-damping on vertical velocity to keep stability
+  if(vveldamp == 1) call w_damping(mzp,mxp,myp,ia,iz,ja,jz,mynum)
+
+  !  Apply scalar b.c.'s
+  !----------------------------------------
+  call TRSETS()          
+
+  !  Lateral velocity boundaries - radiative
+  !-------------------------------------------
+  call LATBND()
+
+  !  Apply Asselin time filter
+  !---------------------------------------------------
+  ! 
+  !  Af(t)=A(t)+gama*(Af(t-deltat)-2*A(t)+A(t+deltat))
+  ! 
+  !  Where A denotes quantities and, 
+  !  Af is the filtered quantities
+  !---------------------------------------------------
+
+  !  First stage Asselin filter
+  !------------------------------------------
+  !
+  !  scratch=A(t)+gama*(Af(t-deltat)-2*A(t))
+  !
+  !       +--------------+--------------+
+  !       | IN           | OUT          |
+  !  +----+--------------+--------------|
+  !  | AP | Af(t-deltat) | Af(t-deltat) |
+  !  |----+--------------+--------------|
+  !  | AC | A(t)         | scratch      |
+  !  +----+--------------+--------------+
+  !
+  !------------------------------------------
+  call HADVANCE(1)     
+
+  !  Buoyancy term for w equation
+  !----------------------------------------
+  call BUOYANCY()
+
+  !  Acoustic small timesteps
+  !----------------------------------------
+  ! AF: OUT: A(t+deltat)
+  call acoustic_new(OneGrid)
+
+  !  Last stage of Asselin filter
+  !------------------------------------------
+  !
+  !  Af(t)=scratch+gama*A(t+deltat)
+  ! 
+  !       +--------------+--------------+
+  !       | IN           | OUT          |
+  !  +----+--------------+--------------|
+  !  | AP ! A(t+deltat)  | Af(t)        |
+  !  |----+--------------+--------------|
+  !  | AC ! scratch      | A(t+deltat)  |
+  !  +----+--------------+--------------+
+  ! 
+  !------------------------------------------
+  call HADVANCE(2)
+
+  !  Velocity/pressure boundary conditions
+  !----------------------------------------
+  call VPSETS()          
+!!$  call TimeStamp(TS_DINAMICS)
+
+!--(DMK-CCATT-INI)------------------------------------------------------------------
+  !srf-chem:  get the true air density for chemistry 
+  !           to assure mass conservation 
+  if (iexev == 2) &
+  	call get_true_air_density(mzp,mxp,myp,ia,iz,ja,jz)
+!--(DMK-CCATT-FIM)------------------------------------------------------------------
+
+  ! Call THERMO on the boundaries
+  call thermo_boundary_driver((time+dtlongn(ngrid)), dtlong, &
+       f_thermo_e, f_thermo_w, f_thermo_s, f_thermo_n, &
+       nzp, mxp, myp, jdim)
+
+!--(DMK-CCATT-INI)------------------------------------------------------------------
+  !- CATT & Chemistry == CCATT
+  !----------------------------------------
+  if (ccatt==1) THEN 
+    if ( (split_method== 'PARALLEL' .AND. N_DYN_CHEM > 1) .OR.  &
+         (split_method== 'SEQUENTIAL'                   ) .OR.  &
+ 	 (split_method== 'SYMMETRIC'                    )       )THEN
+
+       ! task 3 : production/loss by chemical processes and final updated
+       !  	of each specie
+       call chemistry_driver(mzp,mxp,myp,ia,iz,ja,jz,3,50)
+    endif
+  endif
+  if (ccatt==1 .and. aerosol == 1) THEN 
+    call aer_background(ngrid,mzp,mxp,myp,ia,iz,ja,jz)
+  endif
+!--(DMK-CCATT-FIM)------------------------------------------------------------------
+
+!!$  call mass_flux(nzp,nxp,nyp,mzp,mxp,myp,a(iup),a(ivp),a(iwp) &
+!!$       ,a(idn0),a(irtgu),a(irtgv),a(idyu),a(idxv),a(ipp),a(ipi0))
+
+  if (TEB_SPM==1) then
+     !EDF  emission module %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+     if (isource==1) then
+        ! Apply only for last finner grid
+        if (ngrid==ngrids) then
+           CALL le_fontes(ngrid, mzp, mxp, myp, &
+                npatch, ia, iz, ja, jz, (time+dtlongn(1))) 
+        endif
+     endif
+     !EDF%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  endif
+  
+ 100 continue 
+  
+	!rmf!-> digital filter here 
+	if(applyDF) call applyDigitalFilter(fileNameDF, dfVars)
+  
+  
+!!$  call TimeStamp(TS_PHYSICS)
+end subroutine timestep
+end module ModTimestep
+
+!*************************************************************************
+
+subroutine mass_flux(n1,n2,n3,m1,m2,m3,up,vp,wp  &
+     ,dn0,rtgu,rtgv,dyu,dxv,pp,pi0)
+
+  use mem_grid
+  use rconstants
+
+  implicit none
+  integer :: n1,n2,n3,m1,m2,m3
+  real :: up(m1,m2,m3),vp(m1,m2,m3),wp(m1,m2,m3)  &
+       ,dn0(n1,n2,n3),rtgu(n2,n3),dyu(n2,n3),dxv(n2,n3)  &
+       ,rtgv(n2,n3),pp(m1,m2,m3),pi0(n1,n2,n3)
+
+  real, save :: aintmass=0.
+
+  integer :: i,j,k
+  real :: wmass,emass,smass,nmass,prtot,tmass,ppp,area
+
+  !cc      if (mod(time,300.).gt..1) return
+
+  !  west/east bound
+  wmass=0.
+  emass=0.
+  do j=2,nyp-1
+     do k=2,nzp-1
+        i=1
+        wmass=wmass +  &
+             up(k,i,j)*rtgu(i,j)/(dyu(i,j)*dzt(k))  &
+             *(dn0(k,i,j)+dn0(k,i+1,j))*.5
+        i=nxp-1
+        emass=emass -  &
+             up(k,i,j)*rtgu(i,j)/(dyu(i,j)*dzt(k))  &
+             *(dn0(k,i,j)+dn0(k,i+1,j))*.5
+     enddo
+  enddo
+
+  !  north/south bound
+  smass=0.
+  nmass=0.
+  do i=2,nxp-1
+     do k=2,nzp-1
+        j=1
+        smass=smass +  &
+             vp(k,i,j)*rtgv(i,j)/(dxv(i,j)*dzt(k))  &
+             *(dn0(k,i,j)+dn0(k,i,j+1))*.5
+        j=nyp-1
+        nmass=nmass -  &
+             vp(k,i,j)*rtgv(i,j)/(dxv(i,j)*dzt(k))  &
+             *(dn0(k,i,j)+dn0(k,i,j+1))*.5
+     enddo
+  enddo
+
+  k=2
+  prtot=0.
+  do j=2,nyp-1
+     do i=2,nxp-1
+        ppp= ( (pp(k,i,j)+pi0(k,i,j))/cp )**cpor*p00
+        prtot=prtot+ppp/(dyu(i,j)*dxv(i,j))
+     enddo
+  enddo
+
+
+  tmass=wmass+emass+smass+nmass
+  aintmass=aintmass+tmass*dtlong
+  area=(nxp-2)*deltax*(nyp-2)*deltay
+
+
+  print*,'==============================='
+  print*,' Mass flux - W, E, S, N'
+  print*,  wmass,emass,smass,nmass
+  print*, 'total (kg/(m2 s):',tmass/area
+  print*, 'total (kg/m2):',aintmass/area
+  print*, 'total pr change (pa):',aintmass/area*9.8
+  print*, 'computed mean press:',prtot/area
+  print*,'==============================='
+
+  return
+end subroutine mass_flux
+!     *****************************************************************
+
+subroutine w_damping(mzp,mxp,myp,ia,iz,ja,jz,mynum)
+
+  use mem_basic, only: &
+       basic_g           ! intent(in)
+
+  use mem_grid, only: &
+       ngrid,         & ! intent(in)
+       grid_g           ! intent(in)
+  use mem_tend, only: tend
+
+    implicit none
+    integer, intent(in) :: mzp
+    integer, intent(in) :: mxp
+    integer, intent(in) :: myp
+    integer, intent(in) :: ia
+    integer, intent(in) :: iz
+    integer, intent(in) :: ja
+    integer, intent(in) :: jz
+    integer, intent(in) :: mynum
+
+  call apply_wdamp(mzp,mxp,myp,ia,iz,ja,jz,mynum   &
+       ,basic_g(ngrid)%up   ,basic_g(ngrid)%vp     &
+       ,basic_g(ngrid)%wp   ,grid_g(ngrid)%rtgt    &
+       ,grid_g(ngrid)%f13t  ,grid_g(ngrid)%f23t    &
+       ,grid_g(ngrid)%dxt   ,grid_g(ngrid)%dyt     & 
+       ,tend%ut             ,tend%vt               &
+       ,tend%wt                                            )
+  
+end subroutine w_damping
+
+! **********************************************************************
+
+subroutine apply_wdamp(m1,m2,m3,ia,iz,ja,jz,mynum,up,vp,wp,rtgt,f13t,f23t,dxt,dyt,ut,vt,wt)
+
+  use mem_grid, only: &
+       jdim,          & ! intent(in)
+       ngrid,         & ! intent(in)
+       dtlt,          & ! intent(in)
+       ht,            & ! intent(in)
+       dzt              ! intent(in)
+
+  implicit none
+  integer, intent(in) :: m1
+  integer, intent(in) :: m2
+  integer, intent(in) :: m3
+  integer, intent(in) :: ia
+  integer, intent(in) :: iz
+  integer, intent(in) :: ja
+  integer, intent(in) :: jz
+  integer, intent(in) :: mynum
+  real,    intent(in) :: up(m1,m2,m3)
+  real,    intent(in) :: vp(m1,m2,m3)
+  real,    intent(in) :: wp(m1,m2,m3)
+  real,    intent(in) :: rtgt(m2,m3)
+  real,    intent(in) :: f13t(m2,m3)
+  real,    intent(in) :: f23t(m2,m3)
+  real,    intent(in) :: dxt(m2,m3)
+  real,    intent(in) :: dyt(m2,m3)
+  real,    intent(inout) :: ut(m1,m2,m3)
+  real,    intent(inout) :: vt(m1,m2,m3)
+  real,    intent(inout) :: wt(m1,m2,m3)
+
+  integer :: i,j,k,ifm,icm,innest
+  real :: c1x,c1y,c1z,cflnumh,cflnumv,cflz
+  real :: vctr1(m1)
+  real :: vctr2(m1)
+  real :: vctr3(m1)
+  real , parameter ::gama_w=0.3 !m/s²
+  !     This routine damps the vertical velocity when CFLZ is exceed
+  !     (Actually check on 80% of CFL)
+
+  cflnumh = .80
+  cflnumv = .50
+  cflz=0.0
+  !
+  !c1x=0.0
+  !vctr3(:)=0.0
+
+  do j = ja,jz
+    do i = ia,iz
+      do k = 2,m1-1
+
+           !cflx
+	   !vctr1(k) = .5*(up(k,i,j)+up(k,i-1,j))*dtlt*dxt(i,j)
+           !cfly
+	   !vctr2(k) = .5*(vp(k,i,j)+vp(k,i,j-jdim))*dtlt*dyt(i,j)
+           !cflz
+	   vctr3(k) = ((wp(k,i,j)+wp(k-1,i,j))  &
+                +(up(k,i,j)+up(k,i-1,j))*f13t(i,j)*ht(k)*rtgt(i,j)  &
+                +(vp(k,i,j)+vp(k,i,j-jdim))*f23t(i,j)*ht(k)*rtgt(i,j)  &
+                )*.5*dtlt*dzt(k)
+	   c1z=abs(vctr3(k))
+	   if(c1z > cflnumv) then
+	     wt(k,i,j) = wt(k,i,j) -gama_w*sign(1.,wp(k,i,j))*(c1z-cflnumv)
+	     print*,'wdamp applied at=',k,i,j,mynum,c1z,wp(k,i,j)
+	     call flush(6)
+	   endif
+       enddo
+       !do k = 2,m1-1
+       !   c1x = abs(vctr1(k))
+       !   c1y = abs(vctr2(k))
+       !   c1z = abs(vctr3(k))
+       !
+       !   if (c1x .gt. cflxy(ngrid)) cflxy(ngrid) = c1x
+       !   if (c1y .gt. cflxy(ngrid)) cflxy(ngrid) = c1y
+       !    if (c1z .gt. cflz) cflz = c1z
+       !enddo
+     enddo 
+  enddo 
+  !print*,'at wdamp2-max cflz',mynum,cflz
+  !call flush(6)
+  
+end subroutine apply_wdamp
+
+! ***************************************************************************

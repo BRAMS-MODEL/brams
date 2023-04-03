@@ -1,0 +1,766 @@
+###############################################################################
+## Build jobs
+###############################################################################
+{% if REMOTE_JASMIN  %}
+    [[REMOTE]]
+        submission polling intervals = PT1M
+        execution polling intervals = PT1M
+        [[[remote]]]
+            host = jasmin-sci2.ceda.ac.uk
+            owner = {{ JASMIN_USER_ID }}
+{% else %}
+     [[REMOTE]]
+{% endif %}
+
+
+    [[JASMIN_LOTUS]]
+        inherit = REMOTE
+        env-script = module add parallel-netcdf/intel
+        [[[job]]]
+            batch system = lsf
+        [[[directives]]]
+            -q = short-serial
+        [[[environment]]]
+            ROSE_LAUNCHER = mpirun.lotus
+        {% if JASMIN_JULES_BASE_DIR is defined %}
+            JASMIN_JULES_BASE_DIR = {{JASMIN_JULES_BASE_DIR}}
+        {% else %}
+            JASMIN_JULES_BASE_DIR = "/gws/nopw/j04/jules"
+        {% endif %}
+            JASMIN_ROSE_STEM_DATA_DIR = $JASMIN_JULES_BASE_DIR/admin
+
+    [[JASMIN_FCM_MAKE]]
+        inherit = None, JASMIN_LOTUS, EXTRACT
+        [[[environment]]]
+            JULES_PLATFORM = jasmin-lotus-intel
+            ROSE_TASK_APP = fcm_make
+            {% if REMOTE_JASMIN %}
+                JULES_SOURCE = {{ REMOTE_JULES_SOURCE }}
+            {% else %}
+                JULES_SOURCE = {{ SOURCE_JULES }}
+            {% endif %}
+        [[[job]]]
+            execution time limit = PT20M
+        [[[directives]]]
+            -n = 1
+
+    [[fcm_make_debug]]
+        inherit = None, JASMIN_FCM_MAKE
+        [[[environment]]]
+            JULES_BUILD = normal
+            JULES_OMP   = noomp
+
+    [[fcm_make_mpi]]
+        inherit = None, JASMIN_FCM_MAKE
+        [[[environment]]]
+            JULES_BUILD = normal
+            JULES_OMP   = noomp
+
+###############################################################################
+## Compute jobs
+###############################################################################
+    [[JASMIN_COMPUTE]]
+        inherit = None, JASMIN_LOTUS, COMPUTE
+        [[[job]]]
+            execution time limit = PT30M
+        [[[directives]]]
+            -x =
+        [[[environment]]]
+            LOOBOS_INSTALL_DIR = $JASMIN_ROSE_STEM_DATA_DIR/loobos_data
+            GSWP2_INSTALL_DIR = $JASMIN_ROSE_STEM_DATA_DIR/benchmarking-data/gswp2
+            ERAINT_INSTALL_DIR = $JASMIN_ROSE_STEM_DATA_DIR/benchmarking-data/eraint
+            IMOGEN_INSTALL_DIR = $JASMIN_ROSE_STEM_DATA_DIR/benchmarking-data/imogen
+            LD_LIBRARY_PATH = $LD_LIBRARY_PATH:$HDF5_LIBDIR
+
+    [[JASMIN_LOOBOS]]
+        inherit = None, JASMIN_COMPUTE
+        [[[directives]]]
+            -n = 1
+        [[[environment]]]
+            BUILD_NAME = fcm_make_debug
+
+    [[loobos_gl7]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_gl4]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_gl8]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_gl8_medlyn]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_vegdrag]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_euro4]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_forecast]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_ukv]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_trif_spinup]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_trif]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_trif_spinup/output/loobos_trif_spinup.dump.19971231.82800.nc
+
+    [[loobos_julesc_spinup]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_julesc]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_julesc_spinup/output/loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[loobos_jules_c1p1]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_julesc_spinup/output/loobos_julesc_spinup.dump.19971231.82800.nc
+            
+    [[loobos_jules_c1p1_fire]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_julesc_spinup/output/loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[loobos_jules_cn_spinup]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+
+    [[loobos_jules_cn]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_jules_cn_spinup/output/loobos_jules_cn_spinup.dump.19971231.82800.nc
+
+    [[loobos_jules_es_1p0_spinup]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+
+    [[loobos_jules_es_1p0]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_jules_es_1p0_spinup/output/loobos_jules_es_1p0_spinup.dump.19971231.82800.nc
+
+    [[loobos_jules_layeredcn_spinup]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_jules_layeredcn]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_jules_layeredcn_spinup/output/loobos_jules_layeredcn_spinup.dump.19971231.82800.nc
+
+    [[loobos_crops]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_prescribe_sthuf]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_irrig]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_irrig_nirrtile]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_fire_spinup]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_fire]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            DUMP_FILE = ../loobos_fire_spinup/output/loobos_fire_spinup.dump.19971231.82800.nc
+
+    [[loobos_daily_disagg]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_crm1_traitF]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_crm4_traitF]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_crm5_traitF]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_crm6_traitF]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_crm6_traitT]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[loobos_crm6_traitT_farquhar]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitT
+            ROSE_APP_OPT_CONF_KEYS = farquhar
+
+    [[loobos_crm6_traitF_srfT]]
+        inherit = LOOBOS, JASMIN_LOOBOS
+
+    [[JASMIN_GSWP2]]
+        inherit = None, JASMIN_COMPUTE
+        [[[directives]]]
+            -q = par-multi
+            -n = 8
+        [[[environment]]]
+            BUILD_NAME = fcm_make_mpi
+
+    [[gswp2_rivers]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[gswp2_rivers_spinup]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[gswp2_rivers_restart]]
+        inherit = GSWP2, JASMIN_GSWP2
+        [[[environment]]]
+	   DUMP_FILE = ../gswp2_rivers_spinup/output/gswp2_rivers_spinup.dump.19820701.10800.nc
+
+    [[gswp2_trip]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[gswp2_trip_spinup]]
+        inherit = GSWP2,  JASMIN_GSWP2
+
+    [[gswp2_trip_restart]]
+        inherit = GSWP2, JASMIN_GSWP2
+        [[[environment]]]
+            DUMP_FILE = ../gswp2_trip_spinup/output/gswp2_trip_spinup.dump.19820701.10800.nc
+    
+    [[gswp2_irrig_limit_low_river_storage]]
+        inherit = GSWP2, JASMIN_GSWP2
+        [[[environment]]]
+            DUMP_FILE = ../gswp2_trip_spinup/output/gswp2_trip_spinup.dump.19820701.10800.nc
+    
+    [[gswp2_irrig_limit_high_river_storage]]
+        inherit = GSWP2, JASMIN_GSWP2
+        [[[environment]]]
+            DUMP_FILE = ../gswp2_trip_spinup/output/gswp2_trip_spinup.dump.19820701.10800.nc
+
+    [[gswp2_closures]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[gswp2_euro4]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[gswp2_gl7]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[gswp2_gl4]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[gswp2_ukv]]
+        inherit = GSWP2, JASMIN_GSWP2
+
+    [[JASMIN_ERAINT]]
+        inherit = None, JASMIN_COMPUTE
+        [[[directives]]]
+            -q = par-multi
+            -n = 8
+	[[[environment]]]
+            BUILD_NAME = fcm_make_mpi
+
+    [[eraint_rfm_2ddata]]
+        inherit = ERAINT, JASMIN_ERAINT
+
+    [[eraint_trip_2ddata]]
+        inherit = ERAINT, JASMIN_ERAINT
+        [[[environment]]]
+        DUMP_FILE = $ERAINT_INSTALL_DIR/brahma_eraint.dump.19951031.0.nc
+
+    [[JASMIN_IMOGEN]]
+        inherit = None, JASMIN_COMPUTE
+        [[[directives]]]
+            -q = par-multi
+            -n = 8
+	[[[environment]]]
+            BUILD_NAME = fcm_make_mpi
+
+    [[imogen_layeredc_spinup]]
+        inherit = IMOGEN, JASMIN_IMOGEN
+
+    [[imogen_layeredc]]
+        inherit = IMOGEN, JASMIN_IMOGEN
+        [[[environment]]]
+            DUMP_FILE = ../imogen_layeredc_spinup/output/imogen_layeredc_spinup.dump.18650101.0.nc
+
+###############################################################################
+## Comparison jobs
+###############################################################################
+    [[JASMIN_NETCDF_COMPARISON]]
+        inherit = None, JASMIN_LOTUS, NETCDF_COMPARISON
+        [[[environment]]]
+            KGO_DIR = $JASMIN_ROSE_STEM_DATA_DIR/rose-stem-kgo/{{ KGO_VERSION }}
+
+    [[nccmp_loobos_gl7]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_gl7/output
+
+    [[nccmp_loobos_gl4]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_gl4/output
+
+    [[nccmp_loobos_gl8]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_gl8/output
+
+    [[nccmp_loobos_gl8_medlyn]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_gl8_medlyn/output
+
+    [[nccmp_loobos_vegdrag]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_vegdrag/output
+
+    [[nccmp_loobos_euro4]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_euro4/output
+
+    [[nccmp_loobos_forecast]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_forecast/output
+
+    [[nccmp_loobos_ukv]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_ukv/output
+
+    [[nccmp_loobos_trif]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_trif/output
+
+    [[nccmp_loobos_julesc]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_julesc/output
+
+    [[nccmp_loobos_jules_c1p1]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_jules_c1p1/output
+            
+    [[nccmp_loobos_jules_c1p1_fire]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_jules_c1p1_fire/output
+
+    [[nccmp_loobos_jules_cn]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_jules_cn/output
+
+    [[nccmp_loobos_jules_es_1p0]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_jules_es_1p0/output
+
+    [[nccmp_loobos_jules_layeredcn]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_jules_layeredcn/output
+
+    [[nccmp_loobos_fire]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_fire/output
+
+    [[nccmp_loobos_crops]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crops/output
+
+    [[nccmp_loobos_prescribe_sthuf]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_prescribe_sthuf/output
+
+    [[nccmp_loobos_irrig]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_irrig/output
+
+   [[nccmp_loobos_irrig_nirrtile]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_irrig_nirrtile/output
+
+    [[nccmp_loobos_daily_disagg]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_daily_disagg/output
+
+    [[nccmp_loobos_crm1_traitF]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crm1_traitF/output
+
+    [[nccmp_loobos_crm4_traitF]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crm4_traitF/output
+
+    [[nccmp_loobos_crm5_traitF]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crm5_traitF/output
+
+    [[nccmp_loobos_crm6_traitF]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crm6_traitF/output
+
+    [[nccmp_loobos_crm6_traitT]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crm6_traitT/output
+
+    [[nccmp_loobos_crm6_traitT_farquhar]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crm6_traitT_farquhar/output
+
+    [[nccmp_loobos_crm6_traitF_srfT]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../loobos_crm6_traitF_srfT/output
+
+    [[nccmp_gswp2_rivers]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_rivers/output
+
+    [[nccmp_gswp2_rivers_restart]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+	[[[environment]]]
+	    OUTPUT_DIR = ../gswp2_rivers_restart/output
+
+    [[nccmp_gswp2_trip]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_trip/output
+
+    [[nccmp_gswp2_trip_restart]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_trip_restart/output
+   
+    [[nccmp_gswp2_irrig_limit_low_river_storage]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_irrig_limit_low_river_storage/output
+    
+    [[nccmp_gswp2_irrig_limit_high_river_storage]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_irrig_limit_high_river_storage/output
+            
+    [[nccmp_gswp2_closures]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_closures/output
+
+    [[nccmp_gswp2_euro4]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_euro4/output
+
+    [[nccmp_gswp2_gl7]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_gl7/output
+
+    [[nccmp_gswp2_gl4]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_gl4/output
+
+    [[nccmp_gswp2_ukv]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../gswp2_ukv/output
+
+    [[nccmp_eraint_rfm_2ddata]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../eraint_rfm_2ddata/output
+
+    [[nccmp_eraint_trip_2ddata]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../eraint_trip_2ddata/output
+
+    [[nccmp_imogen_layeredc]]
+        inherit = KGO_CHECK, JASMIN_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../imogen_layeredc/output
+
+###############################################################################
+## Housekeeping jobs
+###############################################################################
+    [[housekeep_loobos_gl7]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_gl7
+
+    [[housekeep_loobos_gl4]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_gl4
+
+    [[housekeep_loobos_gl8]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_gl8
+
+    [[housekeep_loobos_gl8_medlyn]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_gl8_medlyn
+
+    [[housekeep_loobos_vegdrag]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_vegdrag
+
+    [[housekeep_loobos_euro4]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_euro4
+
+    [[housekeep_loobos_forecast]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+           DIR1 = ../loobos_forecast
+
+    [[housekeep_loobos_ukv]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_ukv
+
+    [[housekeep_loobos_trif_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_trif_spinup
+
+    [[housekeep_loobos_trif]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_trif
+
+    [[housekeep_loobos_julesc_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_julesc_spinup
+
+    [[housekeep_loobos_julesc]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_julesc
+
+    [[housekeep_loobos_jules_c1p1]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_jules_c1p1
+            
+    [[housekeep_loobos_jules_c1p1_fire]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_jules_c1p1_fire
+
+    [[housekeep_loobos_jules_cn_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_jules_cn_spinup
+
+    [[housekeep_loobos_jules_cn]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_jules_cn
+
+    [[housekeep_loobos_jules_es_1p0_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_jules_es_1p0_spinup
+
+    [[housekeep_loobos_jules_es_1p0]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_jules_es_1p0
+
+    [[housekeep_loobos_jules_layeredcn_spinup]]
+        inherit = HOUSEKEEPING, LINUX
+        [[[environment]]]
+            DIR1 = ../loobos_jules_layeredcn_spinup
+
+    [[housekeep_loobos_jules_layeredcn]]
+        inherit = HOUSEKEEPING, LINUX
+        [[[environment]]]
+            DIR1 = ../loobos_jules_layeredcn
+
+    [[housekeep_loobos_crops]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crops
+
+    [[housekeep_loobos_prescribe_sthuf]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_prescribe_sthuf
+
+    [[housekeep_loobos_irrig]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_irrig
+
+    [[housekeep_loobos_irrig_nirrtile]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_irrig_nirrtile
+
+    [[housekeep_loobos_fire_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_fire_spinup
+
+    [[housekeep_loobos_fire]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_fire
+
+    [[housekeep_loobos_daily_disagg]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_daily_disagg
+
+    [[housekeeping_loobos_crm1_traitF]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crm1_traitF
+
+    [[housekeeping_loobos_crm4_traitF]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crm4_traitF
+
+    [[housekeeping_loobos_crm5_traitF]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crm5_traitF
+
+    [[housekeeping_loobos_crm6_traitF]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crm6_traitF
+
+    [[housekeeping_loobos_crm6_traitT]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crm6_traitT
+
+    [[housekeeping_loobos_crm6_traitT_farquhar]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crm6_traitT_farquhar
+
+    [[housekeeping_loobos_crm6_traitF_srfT]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../loobos_crm6_traitF_srfT
+
+    [[housekeep_gswp2_rivers]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_rivers
+
+    [[housekeep_gswp2_rivers_restart]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_rivers_restart
+
+    [[housekeep_gswp2_rivers_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+	[[[environment]]]
+	    DIR1 = ../gswp2_rivers_spinup
+    
+    [[housekeep_gswp2_trip]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_trip
+
+    [[housekeep_gswp2_trip_restart]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_trip_restart
+
+    [[housekeep_gswp2_irrig_limit_low_river_storage]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_irrig_limit_low_river_storage
+
+    [[housekeep_gswp2_irrig_limit_high_river_storage]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_irrig_limit_high_river_storage
+            
+    [[housekeep_gswp2_trip_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_trip_spinup
+
+    [[housekeep_gswp2_closures]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_closures
+
+    [[housekeep_gswp2_euro4]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_euro4
+
+    [[housekeep_gswp2_gl7]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_gl7
+
+    [[housekeep_gswp2_gl4]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_gl4
+
+    [[housekeep_gswp2_ukv]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../gswp2_ukv
+
+    [[housekeep_eraint_rfm_2ddata]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../eraint_rfm_2ddata
+
+    [[housekeep_eraint_trip_2ddata]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../eraint_trip_2ddata
+
+    [[housekeep_imogen_layeredc_spinup]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../imogen_layeredc_spinup
+
+    [[housekeep_imogen_layeredc]]
+        inherit = HOUSEKEEPING, JASMIN_LOTUS
+        [[[environment]]]
+            DIR1 = ../imogen_layeredc

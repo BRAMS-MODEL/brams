@@ -1,0 +1,17 @@
+#! /bin/bash
+export JULES_COMPILER=gfortran
+export JULES_BUILD=fast
+export JULES_REMOTE=local
+export JULES_OMP=noomp
+export JULES_MPI=nompi
+export JULES_FFLAGS_EXTRA=
+export JULES_LDFLAGS_EXTRA=
+export JULES_NETCDF=netcdf
+export JULES_NETCDF_PATH=/home/lufla/anaconda3/envs/brams/
+export JULES_NETCDF_LIB_PATH=$JULES_NETCDF_PATH/lib
+export JULES_NETCDF_INC_PATH=$JULES_NETCDF_PATH/include
+../../fcm-2019.09.0/bin/fcm make -j 2 -f etc/fcm-make/make.cfg $1
+#../fcm-2016.05.1/bin/fcm make -j 2 -f etc/fcm-make/make.cfg --new
+
+
+

@@ -1,0 +1,142 @@
+###############################################################################
+## Name graphs
+###############################################################################
+{%- set name_graphs_linux_nagfor = {
+        "meto_linux_nagfor_loobos_gl4" : "fcm_make_meto_linux_nagfor_debug =>   \
+                                            meto_linux_nagfor_loobos_gl4          \
+                                            & meto_linux_nagfor_loobos_gl4_cable => \
+                                            housekeep_meto_linux_nagfor_loobos_gl4",
+
+        "meto_linux_nagfor_loobos_gl7" : "fcm_make_meto_linux_nagfor_debug =>   \
+                                            meto_linux_nagfor_loobos_gl7 => \
+                                            housekeep_meto_linux_nagfor_loobos_gl7",
+
+        "meto_linux_nagfor_loobos_gl8" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_gl8 =>       \
+                                              housekeep_meto_linux_nagfor_loobos_gl8",
+
+        "meto_linux_nagfor_loobos_gl8_medlyn" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_gl8_medlyn =>       \
+                                              housekeep_meto_linux_nagfor_loobos_gl8_medlyn",
+
+        "meto_linux_nagfor_loobos_vegdrag" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_vegdrag =>       \
+                                              housekeep_meto_linux_nagfor_loobos_vegdrag",
+
+        "meto_linux_nagfor_loobos_euro4" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_euro4 =>       \
+                                              housekeep_meto_linux_nagfor_loobos_euro4",
+
+        "meto_linux_nagfor_loobos_forecast" : "fcm_make_meto_linux_nagfor_debug =>        \
+                                                 meto_linux_nagfor_loobos_forecast =>       \
+                                                 housekeep_meto_linux_nagfor_loobos_forecast",
+
+        "meto_linux_nagfor_loobos_ukv" : "fcm_make_meto_linux_nagfor_debug =>   \
+                                            meto_linux_nagfor_loobos_ukv =>       \
+                                            housekeep_meto_linux_nagfor_loobos_ukv",
+
+        "meto_linux_nagfor_loobos_trif" : "fcm_make_meto_linux_nagfor_debug =>                                      \
+                                            meto_linux_nagfor_loobos_trif_spinup => meto_linux_nagfor_loobos_trif => \
+                                            housekeep_meto_linux_nagfor_loobos_trif_spinup & housekeep_meto_linux_nagfor_loobos_trif",
+
+        "meto_linux_nagfor_loobos_julesc" : "fcm_make_meto_linux_nagfor_debug =>                                            \
+                                               meto_linux_nagfor_loobos_julesc_spinup => meto_linux_nagfor_loobos_julesc &  \
+                                               meto_linux_nagfor_loobos_jules_c1p1 & meto_linux_nagfor_loobos_jules_c1p1_fire => \
+                                               housekeep_meto_linux_nagfor_loobos_julesc_spinup & housekeep_meto_linux_nagfor_loobos_jules_c1p1 & \
+                                               housekeep_meto_linux_nagfor_loobos_jules_c1p1_fire & housekeep_meto_linux_nagfor_loobos_julesc",
+
+        "meto_linux_nagfor_loobos_jules_layeredcn" : "fcm_make_meto_linux_nagfor_debug =>                                            \
+                                               meto_linux_nagfor_loobos_jules_layeredcn_spinup => meto_linux_nagfor_loobos_jules_layeredcn => \
+                                               housekeep_meto_linux_nagfor_loobos_jules_layeredcn_spinup & housekeep_meto_linux_nagfor_loobos_jules_layeredcn",
+
+        "meto_linux_nagfor_loobos_jules_cn" : "fcm_make_meto_linux_nagfor_debug =>                                            \
+                                               meto_linux_nagfor_loobos_jules_cn_spinup => meto_linux_nagfor_loobos_jules_cn => \
+                                               housekeep_meto_linux_nagfor_loobos_jules_cn_spinup & housekeep_meto_linux_nagfor_loobos_jules_cn",
+
+        "meto_linux_nagfor_loobos_jules_es_1p0" : "fcm_make_meto_linux_nagfor_debug =>                                                         \
+                                                meto_linux_nagfor_loobos_jules_es_1p0_spinup => meto_linux_nagfor_loobos_jules_es_1p0 => \
+                                                housekeep_meto_linux_nagfor_loobos_jules_es_1p0_spinup & housekeep_meto_linux_nagfor_loobos_jules_es_1p0",
+
+        "meto_linux_nagfor_loobos_crops" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_crops =>       \
+                                              housekeep_meto_linux_nagfor_loobos_crops",
+
+        "meto_linux_nagfor_loobos_prescribe_sthuf" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_prescribe_sthuf =>       \
+                                              housekeep_meto_linux_nagfor_loobos_prescribe_sthuf",
+
+        "meto_linux_nagfor_loobos_irrig" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_irrig =>       \
+                                              housekeep_meto_linux_nagfor_loobos_irrig",
+
+        "meto_linux_nagfor_loobos_irrig_nirrtile" : "fcm_make_meto_linux_nagfor_debug =>     \
+                                              meto_linux_nagfor_loobos_irrig_nirrtile =>       \
+                                              housekeep_meto_linux_nagfor_loobos_irrig_nirrtile",
+
+        "meto_linux_nagfor_loobos_fire" : "fcm_make_meto_linux_nagfor_debug =>                                        \
+                                             meto_linux_nagfor_loobos_fire_spinup => meto_linux_nagfor_loobos_fire => \
+                                             housekeep_meto_linux_nagfor_loobos_fire_spinup & housekeep_meto_linux_nagfor_loobos_fire",
+
+        "meto_linux_nagfor_loobos_daily_disagg" : "fcm_make_meto_linux_nagfor_debug =>            \
+                                                     meto_linux_nagfor_loobos_daily_disagg =>       \
+                                                     housekeep_meto_linux_nagfor_loobos_daily_disagg",
+
+        "meto_linux_nagfor_loobos_crm1_traitF" : "fcm_make_meto_linux_nagfor_debug => \
+                                                    meto_linux_nagfor_loobos_crm1_traitF => \
+                                                    housekeeping_meto_linux_nagfor_loobos_crm1_traitF",
+
+        "meto_linux_nagfor_loobos_crm4_traitF" : "fcm_make_meto_linux_nagfor_debug => \
+                                                    meto_linux_nagfor_loobos_crm4_traitF => \
+                                                    housekeeping_meto_linux_nagfor_loobos_crm4_traitF",
+
+        "meto_linux_nagfor_loobos_crm5_traitF" : "fcm_make_meto_linux_nagfor_debug => \
+                                                    meto_linux_nagfor_loobos_crm5_traitF => \
+                                                    housekeeping_meto_linux_nagfor_loobos_crm5_traitF",
+
+        "meto_linux_nagfor_loobos_crm6_traitF" : "fcm_make_meto_linux_nagfor_debug => \
+                                                    meto_linux_nagfor_loobos_crm6_traitF => \
+                                                    housekeeping_meto_linux_nagfor_loobos_crm6_traitF",
+
+        "meto_linux_nagfor_loobos_crm6_traitT" : "fcm_make_meto_linux_nagfor_debug => \
+                                                      meto_linux_nagfor_loobos_crm6_traitT => meto_linux_nagfor_loobos_crm6_traitT_farquhar
+                                                    meto_linux_nagfor_loobos_crm6_traitT => \
+                                                      housekeeping_meto_linux_nagfor_loobos_crm6_traitT
+                                                    meto_linux_nagfor_loobos_crm6_traitT_farquhar => \
+                                                      housekeeping_meto_linux_nagfor_loobos_crm6_traitT_farquhar",
+
+        "meto_linux_nagfor_loobos_crm6_traitF_srfT" : "fcm_make_meto_linux_nagfor_debug => \
+                                                         meto_linux_nagfor_loobos_crm6_traitF_srfT => \
+                                                         housekeeping_meto_linux_nagfor_loobos_crm6_traitF_srfT",
+
+    }
+%}
+
+
+###############################################################################
+## Group definitions
+###############################################################################
+{%- set groups_linux_nagfor = {
+        "linux_nagfor" : ["linux_nagfor_loobos",],
+
+        "linux_nagfor_loobos" : ["meto_linux_nagfor_loobos_gl4",
+                                   "meto_linux_nagfor_loobos_gl7",
+                                   "meto_linux_nagfor_loobos_gl8",
+                                   "meto_linux_nagfor_loobos_gl8_medlyn",
+                                   "meto_linux_nagfor_loobos_vegdrag",
+                                   "meto_linux_nagfor_loobos_euro4",
+                                   "meto_linux_nagfor_loobos_forecast", "meto_linux_nagfor_loobos_ukv",
+                                   "meto_linux_nagfor_loobos_trif", "meto_linux_nagfor_loobos_crops",
+                                   "meto_linux_nagfor_loobos_prescribe_sthuf",
+                                   "meto_linux_nagfor_loobos_fire", "meto_linux_nagfor_loobos_daily_disagg",
+                                   "meto_linux_nagfor_loobos_julesc", "meto_linux_nagfor_loobos_irrig",
+                                   "meto_linux_nagfor_loobos_irrig_nirrtile",
+                                   "meto_linux_nagfor_loobos_jules_cn", "meto_linux_nagfor_loobos_jules_layeredcn",
+                                   "meto_linux_nagfor_loobos_jules_es_1p0",
+                                   "meto_linux_nagfor_loobos_crm1_traitF",
+                                   "meto_linux_nagfor_loobos_crm4_traitF",
+                                   "meto_linux_nagfor_loobos_crm5_traitF",
+                                   "meto_linux_nagfor_loobos_crm6_traitF",
+                                   "meto_linux_nagfor_loobos_crm6_traitT",
+                                   "meto_linux_nagfor_loobos_crm6_traitF_srfT"],
+    }
+%}

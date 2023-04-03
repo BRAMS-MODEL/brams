@@ -1,0 +1,1495 @@
+module ModPostOneFieldUtils
+
+  use ModOutputUtils, only: GetVarFromMemToOutput
+
+  use ModPostGrid, only: OutputGradsField
+  use ModBramsGrid, only: BramsGrid
+  use ModPostGrid, only: PostGrid
+
+  use ModPostUtils, only: rams_comp_tempk
+  use ModPostUtils, only: rams_comp_tempc
+  use ModPostUtils, only: rams_comp_dewk
+  use ModPostUtils, only: rams_comp_thetv
+  use ModPostUtils, only: rams_get_surface
+  use ModPostUtils, only: rams_comp_slpmm5
+  use ModPostUtils, only: rams_comp_rh
+  use ModPostUtils, only: rams_comp_press
+  use ModPostUtils, only: cape_cine
+  use ModPostUtils, only: rams_comp_dn0
+  use ModPostUtils, only: rams_comp_z
+  use ModPostUtils, only: rams_comp_rotate
+  use ModPostUtils, only: rams_comp_avgu
+  use ModPostUtils, only: rams_comp_avgv
+  use ModPostUtils, only: rams_comp_speed
+  use ModPostUtils, only: rams_reduced_temp
+  use ModPostUtils, only: rams_fill_sst
+  use ModPostUtils, only: get_leaf_soil
+  use ModPostUtils, only: rams_comp_pbl
+  use ModPostUtils, only: calc_omeg
+  use ModPostUtils, only: comp_vertint
+  use ModPostUtils, only: comp_slp_metar
+  use ModPostUtils, only: rams_reduced_rv
+  use ModPostUtils, only: rams_comp_dewk_2m
+  use ModPostUtils, only: rams_reduced_wind
+  use ModPostUtils, only: rams_comp_dir
+  use ModPostUtils, only: calc_u10m
+  use ModPostUtils, only: calc_v10m
+  
+  implicit none
+
+  private
+
+  public :: Brams2Post_u 
+  public :: Brams2Post_v 
+  public :: Brams2Post_tempk 
+  public :: Brams2Post_tveg 
+  public :: Brams2Post_totpcp 
+  public :: Brams2Post_acccon 
+  public :: Brams2Post_dewptc 
+  public :: Brams2Post_rshort 
+  public :: Brams2Post_rlong 
+  public :: Brams2Post_sea_press 
+  public :: Brams2Post_cape 
+  public :: Brams2Post_cine 
+  public :: Brams2Post_topo 
+  public :: Brams2Post_precip 
+  public :: Brams2Post_le 
+  public :: Brams2Post_h 
+  public :: Brams2Post_rv 
+  public :: Brams2Post_rlongup 
+  public :: Brams2Post_albedt 
+  public :: Brams2Post_geo 
+  public :: Brams2Post_ue_avg 
+  public :: Brams2Post_ve_avg 
+  public :: Brams2Post_tempc2m 
+  public :: Brams2Post_tempc 
+  public :: Brams2Post_rh 
+  public :: Brams2Post_w 
+  public :: Brams2Post_sst 
+  public :: Brams2Post_land 
+  public :: Brams2Post_smoist 
+  public :: Brams2Post_zi 
+  public :: Brams2Post_tke 
+  public :: Brams2Post_cloud
+  public :: Brams2Post_omeg
+  public :: Brams2Post_pwt
+  public :: Brams2Post_slp_metar
+  public :: Brams2Post_td2m
+  public :: Brams2Post_u10m
+  public :: Brams2Post_v10m
+    
+contains
+
+
+
+
+
+  subroutine Brams2Post_u (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'UP' from var_table
+
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'u'
+    onePostGrid%fieldUnits = 'm/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_u
+
+
+
+  subroutine Brams2Post_v (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'VP' from var_table
+
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'v'
+    onePostGrid%fieldUnits = 'm/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_v
+
+
+
+  subroutine Brams2Post_tempk (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'THETA' from var_table
+    ! ScrT3N01 <- field 'PI' from var_table
+    ! OutputField <- rams_comp_tempk (OutputField, ScrT3N01)
+
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N01)
+    call rams_comp_tempk (OutputField, ScrT3N01)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'temperature'
+    onePostGrid%fieldUnits = 'K'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_tempk
+
+
+
+  subroutine Brams2Post_tveg (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+
+    ! OutputField <- field 'VEG_TEMP' from var_table
+    ! OutputField <- rams_comp_tempc (OutputField)
+
+    call GetVarFromMemToOutput ('VEG_TEMP', oneBramsGrid%currGrid, OutputField)
+    call rams_comp_tempc (OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 7
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'vegetation temperature'
+    onePostGrid%fieldUnits = 'C'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_tveg
+
+
+
+  subroutine Brams2Post_totpcp (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- 0.0
+    ! ScrT2N01 <- field 'ACCPR' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPP' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPS' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPA' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPG' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPH' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! OutputField <- max(OutputField, 0.0)
+
+    OutputField = 0.0
+    call GetVarFromMemToOutput ('ACCPR', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPP', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPS', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPA', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPG', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPH', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    OutputField = max(OutputField, 0.0)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'total resolved precip'
+    onePostGrid%fieldUnits = 'mm liq'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_totpcp
+
+
+
+  subroutine Brams2Post_acccon (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- field 'ACONPR' from var_table
+    ! OutputField <- max(OutputField, 0.0)
+
+    call GetVarFromMemToOutput ('ACONPR', oneBramsGrid%currGrid, OutputField)
+    OutputField = max(OutputField, 0.0)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'accum convective pcp'
+    onePostGrid%fieldUnits = 'mm'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_acccon
+
+
+
+  subroutine Brams2Post_dewptc (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'RV' from var_table
+    ! ScrT3N01 <- field 'PI' from var_table
+    ! ScrT3N02 <- field 'THETA' from var_table
+    ! OutputField <- rams_comp_dewk (OutputField, ScrT3N01, ScrT3N02)
+    ! OutputField <- rams_comp_tempc (OutputField)
+
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_dewk (OutputField, ScrT3N01, ScrT3N02)
+    call rams_comp_tempc (OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'dewpoint temp'
+    onePostGrid%fieldUnits = 'C'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_dewptc
+
+
+
+  subroutine Brams2Post_rshort (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- field 'RSHORT' from var_table
+
+    call GetVarFromMemToOutput ('RSHORT', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'rshort'
+    onePostGrid%fieldUnits = 'W/m2'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_rshort
+
+
+
+  subroutine Brams2Post_rlong (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- field 'RLONG' from var_table
+
+    call GetVarFromMemToOutput ('RLONG', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'rlong'
+    onePostGrid%fieldUnits = 'W/m2'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_rlong
+
+
+
+  subroutine Brams2Post_sea_press (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! ScrT2N01 <- field 'TOPT' from var_table
+    ! ScrT3N01 <- field 'PI' from var_table
+    ! ScrT3N02 <- field 'THETA' from var_table
+    ! ScrT3N03 <- field 'RV' from var_table
+    ! ScrT3N02 <- rams_comp_thetv (ScrT3N02, ScrT3N03)
+    ! OutputField <- ScrT3N03(:,:,1)
+    ! OutputField <- rams_comp_slpmm5 (ScrT3N02, ScrT3N01, ScrT2N01)
+
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid, ScrT3N03)
+    call rams_comp_thetv (ScrT3N02, ScrT3N03)
+    OutputField = ScrT3N03(:,:,1)
+    call rams_comp_slpmm5 (ScrT3N02, ScrT3N01, ScrT2N01, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'sea level pressure;'
+    onePostGrid%fieldUnits = 'mb;'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_sea_press
+
+
+
+  subroutine Brams2Post_cape (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    !- rel hum (e)
+    ! ScrT3N01 <- field 'RV' from var_table
+    ! ScrT3N02 <- field 'PI' from var_table
+    ! ScrT3N03 <- field 'THETA' from var_table
+    ! ScrT3N01 <- rams_comp_rh (ScrT3N01, ScrT3N02, ScrT3N03)
+    ! ScrT3N01 <- max(ScrT3N01, 0.0)
+    !- tempk (d)
+    ! ScrT3N03 <- field 'THETA' from var_table
+    ! ScrT3N02 <- field 'PI' from var_table
+    ! ScrT3N03 <- rams_comp_tempk (ScrT3N03, ScrT3N02)
+    !- press (c)
+    ! ScrT3N02 <- field 'PI' from var_table
+    ! ScrT3N02 <- rams_comp_press (ScrT3N02)
+    !- cape
+    ! OutputField <- cape_cine (ScrT3N02, ScrT3N03, ScrT3N01, OutputField, 'cape')
+
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N02)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N03)
+    call rams_comp_rh (ScrT3N01, ScrT3N02, ScrT3N03)
+    ScrT3N01 = max(ScrT3N01, 0.0)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N03)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_tempk (ScrT3N03, ScrT3N02)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_press(ScrT3N02)
+    call cape_cine (ScrT3N02, ScrT3N03, ScrT3N01, OutputField, 'cape')
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'cape'
+    onePostGrid%fieldUnits = 'J/kg'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_cape
+
+
+
+  subroutine Brams2Post_cine (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    !- rel hum (e)
+    ! ScrT3N01 <- field 'RV' from var_table
+    ! ScrT3N02 <- field 'PI' from var_table
+    ! ScrT3N03 <- field 'THETA' from var_table
+    ! ScrT3N01 <- rams_comp_rh (ScrT3N01, ScrT3N02, ScrT3N03)
+    ! ScrT3N01 <- max(ScrT3N01, 0.0)
+    !- tempk (d)
+    ! ScrT3N03 <- field 'THETA' from var_table
+    ! ScrT3N02 <- field 'PI' from var_table
+    ! ScrT3N03 <- rams_comp_tempk (ScrT3N03, ScrT3N02)
+    !- press (c)
+    ! ScrT3N02 <- field 'PI' from var_table
+    ! ScrT3N02 <- rams_comp_press (ScrT3N02)
+    !- cine
+    ! OutputField <- cape_cine (ScrT3N02, ScrT3N03, ScrT3N01, OutputField, 'cine')
+
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N02)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N03)
+    call rams_comp_rh (ScrT3N01, ScrT3N02, ScrT3N03)
+    ScrT3N01 = max(ScrT3N01, 0.0)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N03)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_tempk (ScrT3N03, ScrT3N02)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_press(ScrT3N02)
+    call cape_cine (ScrT3N02, ScrT3N03, ScrT3N01, OutputField, 'cine')
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'cine'
+    onePostGrid%fieldUnits = 'J/kg'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_cine
+
+
+
+  subroutine Brams2Post_topo (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- field 'TOPT' from var_table
+
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'topo'
+    onePostGrid%fieldUnits = 'm'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_topo
+
+
+
+  subroutine Brams2Post_precip (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- 0.0
+    ! ScrT2N01 <- field 'ACCPR' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPP' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPS' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPA' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPG' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACCPH' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! ScrT2N01 <- field 'ACONPR' from var_table
+    ! OutputField <- OutputField + ScrT2N01
+    ! OutputField <- max(OutputField, 0.0)
+
+    OutputField = 0.0
+    call GetVarFromMemToOutput ('ACCPR', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPP', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPS', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPA', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPG', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACCPH', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    call GetVarFromMemToOutput ('ACONPR', oneBramsGrid%currGrid, ScrT2N01)
+    OutputField = OutputField + ScrT2N01
+    OutputField = max(OutputField, 0.0)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'total accum precip'
+    onePostGrid%fieldUnits = 'mm liq'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_precip
+
+
+
+  subroutine Brams2Post_le (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'SFLUX_R' from var_table
+    ! ScrT2N01 <- field 'TOPT' from var_table
+    ! ScrT3N01, ScrT3N02, ScrT3N03,  <- rams_comp_dn0 (ScrT2N01, pi01dn, th01dn, ztn, ztop, dzmn)
+    ! ScrT2N01 <- ScrT3N03(:,:,1)
+    ! OutputField <- OutputField * ScrT2N01
+    ! OutputField <- OutputField * 2.5e6
+
+    call GetVarFromMemToOutput ('SFLUX_R', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call rams_comp_dn0 (ScrT3N01, ScrT3N02, ScrT3N03, ScrT2N01, oneBramsGrid%pi01dn, &
+         oneBramsGrid%th01dn, oneBramsGrid%ztn, oneBramsGrid%ztop, oneBramsGrid%dzmn)
+    call rams_get_surface(ScrT2N01, ScrT3N03)
+    OutputField = OutputField * ScrT2N01
+    OutputField = OutputField * 2.5e6
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'sfc lat heat flx'
+    onePostGrid%fieldUnits = 'W/m2'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_le
+
+
+
+  subroutine Brams2Post_h (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'SFLUX_T' from var_table
+    ! ScrT2N01 <- field 'TOPT' from var_table
+    ! ScrT3N01, ScrT3N02, ScrT3N03,  <- rams_comp_dn0 (ScrT2N01, pi01dn, th01dn, ztn, ztop, dzmn)
+    ! ScrT2N01 <- ScrT3N03(:,:,1)
+    ! OutputField <- OutputField * ScrT2N01
+    ! OutputField <- OutputField * 1004.
+
+    call GetVarFromMemToOutput ('SFLUX_T', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call rams_comp_dn0 (ScrT3N01, ScrT3N02, ScrT3N03, ScrT2N01, oneBramsGrid%pi01dn, &
+         oneBramsGrid%th01dn, oneBramsGrid%ztn, oneBramsGrid%ztop, oneBramsGrid%dzmn)
+    call rams_get_surface(ScrT2N01, ScrT3N03)
+    OutputField = OutputField * ScrT2N01
+    OutputField = OutputField * 1004.
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'sfc sens heat flx'
+    onePostGrid%fieldUnits = 'W/m2'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_h
+
+
+
+  subroutine Brams2Post_rv (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'RV' from var_table
+    ! OutputField <- OutputField * 1.e3
+    ! OutputField <- max(OutputField, 0.0)
+
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid, OutputField)
+    OutputField = OutputField * 1.e3
+    OutputField = max(OutputField, 0.0)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'vapor mix ratio'
+    onePostGrid%fieldUnits = 'g/kg'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_rv
+
+
+
+  subroutine Brams2Post_rlongup (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- field 'RLONGUP' from var_table
+
+    call GetVarFromMemToOutput ('RLONGUP', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'rlongup'
+    onePostGrid%fieldUnits = 'W/m2'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_rlongup
+
+
+
+  subroutine Brams2Post_albedt (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- field 'ALBEDT' from var_table
+
+    call GetVarFromMemToOutput ('ALBEDT', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'albedt'
+    onePostGrid%fieldUnits = ' '
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_albedt
+
+
+
+  subroutine Brams2Post_geo (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! ScrT2N01 <- field 'TOPT' from var_table
+    ! OutputField <- rams_comp_z (OutputField, ScrT2N01, oneBramsGrid%ztn, oneBramsGrid%ztop)
+
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call rams_comp_z (OutputField, ScrT2N01, oneBramsGrid%ztn, oneBramsGrid%ztop)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'geopotential height'
+    onePostGrid%fieldUnits = 'm'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_geo
+
+
+
+  subroutine Brams2Post_ue_avg (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    integer :: firstX, lastX, firstY, lastY
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'UP' from var_table
+    ! ScrT3N01 <- field 'VP' from var_table
+    ! OutputField, ScrT3N01,  <- rams_comp_rotate (OutputField, ScrT3N01, xtn, ytn, polelat, polelon)
+    ! OutputField <- rams_comp_avgu (OutputField)
+
+    firstX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+1
+    lastX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+oneBramsGrid%mxp
+    firstY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+1
+    lastY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+oneBramsGrid%myp
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, ScrT3N01)
+    call rams_comp_rotate (OutputField, ScrT3N01, &
+         oneBramsGrid%xtn(firstX:lastX), oneBramsGrid%ytn(firstY:lastY), &
+         oneBramsGrid%polelat, oneBramsGrid%polelon)
+    call rams_comp_avgu (OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'ue_avg'
+    onePostGrid%fieldUnits = 'm/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_ue_avg
+
+
+
+  subroutine Brams2Post_ve_avg (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    integer :: firstX, lastX, firstY, lastY
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'VP' from var_table
+    ! ScrT3N01 <- field 'UP' from var_table
+    ! ScrT3N01, OutputField,  <- rams_comp_rotate (ScrT3N01, OutputField, xtn, ytn, polelat, polelon)
+    ! OutputField <- rams_comp_avgv (OutputField)
+
+    firstX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+1
+    lastX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+oneBramsGrid%mxp
+    firstY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+1
+    lastY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+oneBramsGrid%myp
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, ScrT3N01)
+    call rams_comp_rotate (ScrT3N01, OutputField, &
+         oneBramsGrid%xtn(firstX:lastX), oneBramsGrid%ytn(firstY:lastY), &
+         oneBramsGrid%polelat, oneBramsGrid%polelon)
+    call rams_comp_avgv (OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 've_avg'
+    onePostGrid%fieldUnits = 'm/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_ve_avg
+
+
+
+  subroutine Brams2Post_tempc2m (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT6N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N04(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N05(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT1N01
+    real :: ScrT1N02
+
+    ! ScrT3N01 <- field 'UP' from var_table
+    ! ScrT3N02 <- field 'VP' from var_table
+    ! ScrT3N01 <- rams_comp_speed (ScrT3N01, ScrT3N02)
+    ! ScrT3N02 <- field 'THETA' from var_table
+    ! ScrT3N03 <- field 'PI' from var_table
+    ! ScrT2N01 <- field 'TOPT' from var_table
+    ! ScrT6N01 <- field 'USTAR' from var_table
+    ! ScrT6N02 <- field 'PATCH_ROUGH' from var_table
+    ! ScrT6N03 <- field 'CAN_TEMP' from var_table
+    ! ScrT6N04 <- field 'PATCH_AREA' from var_table
+    ! ScrT6N05 <- field 'TSTAR' from var_table
+    ! OutputField <- rams_reduced_temp (ScrT3N01, ScrT6N01, ScrT6N05, 2., ztn, ScrT6N02, ScrT6N04, ScrT6N03, ScrT3N02, ScrT3N03, ScrT2N01, ztop)
+    ! ScrT2N01 <- ScrT3N03(:,:,1)
+    ! OutputField <- rams_comp_tempk (OutputField, ScrT2N01)
+    ! OutputField <- rams_comp_tempc (OutputField)
+
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_speed (ScrT3N01, ScrT3N02)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N03)
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call GetVarFromMemToOutput ('USTAR', oneBramsGrid%currGrid, ScrT6N01)
+    call GetVarFromMemToOutput ('PATCH_ROUGH', oneBramsGrid%currGrid, ScrT6N02)
+    call GetVarFromMemToOutput ('CAN_TEMP', oneBramsGrid%currGrid, ScrT6N03)
+    call GetVarFromMemToOutput ('PATCH_AREA', oneBramsGrid%currGrid, ScrT6N04)
+    call GetVarFromMemToOutput ('TSTAR', oneBramsGrid%currGrid, ScrT6N05)
+    call rams_reduced_temp (OutputField, ScrT3N01, ScrT6N01, ScrT6N05, 2., oneBramsGrid%ztn(2), &
+         ScrT6N02, ScrT6N04, ScrT6N03, ScrT3N02, ScrT3N03, ScrT2N01, oneBramsGrid%ztop)
+    call rams_get_surface(ScrT2N01, ScrT3N03)
+    call rams_comp_tempk (OutputField, ScrT2N01)
+    call rams_comp_tempc (OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'temp - 2m AGL;'
+    onePostGrid%fieldUnits = 'C'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_tempc2m
+
+
+
+  subroutine Brams2Post_tempc (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer     :: oneBramsGrid
+    type(PostGrid), pointer      :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'THETA' from var_table
+    ! ScrT3N01 <- field 'PI' from var_table
+    ! OutputField <- rams_comp_tempk (OutputField, ScrT3N01)
+    ! OutputField <- rams_comp_tempc (OutputField)
+
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N01)
+    call rams_comp_tempk (OutputField, ScrT3N01)
+    call rams_comp_tempc (OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'temperature'
+    onePostGrid%fieldUnits = 'C'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_tempc
+
+
+
+  subroutine Brams2Post_rh (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'RV' from var_table
+    ! ScrT3N01 <- field 'PI' from var_table
+    ! ScrT3N02 <- field 'THETA' from var_table
+    ! OutputField <- rams_comp_rh (OutputField, ScrT3N01, ScrT3N02)
+    ! OutputField <- max(OutputField, 0.0)
+
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid, OutputField)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_rh (OutputField, ScrT3N01, ScrT3N02)
+    OutputField = max(OutputField, 0.0)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'relative humidity'
+    onePostGrid%fieldUnits = 'pct'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_rh
+
+
+
+  subroutine Brams2Post_w (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'WP' from var_table
+
+    call GetVarFromMemToOutput ('WP', oneBramsGrid%currGrid, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'w'
+    onePostGrid%fieldUnits = 'm/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_w
+  
+  
+
+  subroutine Brams2Post_omeg (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'WP' from var_table
+    ! OutputField <- field 'TOPT' from var_table
+
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call rams_comp_dn0 (ScrT3N01, ScrT3N02, ScrT3N03, ScrT2N01, oneBramsGrid%pi01dn, &
+         oneBramsGrid%th01dn, oneBramsGrid%ztn, oneBramsGrid%ztop, oneBramsGrid%dzmn)
+    call GetVarFromMemToOutput ('WP', oneBramsGrid%currGrid, ScrT3N01)
+    call calc_omeg (OutputField,ScrT3N01,ScrT3N03)
+    
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'omega'
+    onePostGrid%fieldUnits = 'Pa/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_omeg
+
+
+
+  subroutine Brams2Post_sst (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT4N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%nzg, oneBramsGrid%npatch)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! ScrT4N01 <- field 'SOIL_ENERGY' from var_table
+    !kp        = nzg
+    ! OutputField <- rams_fill_sst (oneBramsGrid%nzg, OutputField, ScrT4N01)
+
+    call GetVarFromMemToOutput ('SOIL_ENERGY', oneBramsGrid%currGrid, ScrT4N01)
+    call rams_fill_sst (oneBramsGrid%nzg, OutputField, ScrT4N01)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'water temperature'
+    onePostGrid%fieldUnits = 'C'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_sst
+
+
+
+  subroutine Brams2Post_land (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT6N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! ScrT6N01 <- field 'PATCH_AREA' from var_table
+    ! OutputField <- ScrT6N01(:,:,1)
+    ! OutputField <- 1.0 - OutputField
+
+    call GetVarFromMemToOutput ('PATCH_AREA', oneBramsGrid%currGrid, ScrT6N01)
+    call rams_get_surface(OutputField, ScrT6N01)
+    OutputField = 1.0 - OutputField
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'land frac area'
+    onePostGrid%fieldUnits = ''
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_land
+
+
+
+  subroutine Brams2Post_smoist (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: ScrT4N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%nzg, oneBramsGrid%npatch)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%nzg, oneBramsGrid%npatch)
+
+    ! ScrT4N01 <- field 'SOIL_WATER' from var_table
+    ! OutputField <- get_leaf_soil (ScrT4N01, OutputField)
+
+    call GetVarFromMemToOutput ('SOIL_WATER', oneBramsGrid%currGrid, ScrT4N01)
+    call get_leaf_soil (ScrT4N01, OutputField)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 8
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'soil moisture'
+    onePostGrid%fieldUnits = 'm3/m3'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_smoist
+
+
+
+  subroutine Brams2Post_zi (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    ! OutputField <- field 'TKEP' from var_table
+    ! OutputField <- max(OutputField, 0.0)
+    ! ScrT2N01 <- field 'TOPT' from var_table
+    ! OutputField <- rams_comp_pbl (OutputField, ScrT2N01, oneBramsGrid%ztn, oneBramsGrid%ztop)
+
+    call GetVarFromMemToOutput ('TKEP', oneBramsGrid%currGrid, OutputField)
+    OutputField = max(OutputField, 0.0)
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call rams_comp_pbl (OutputField, ScrT2N01, oneBramsGrid%ztn, oneBramsGrid%ztop)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'Zi'
+    onePostGrid%fieldUnits = 'm'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_zi
+
+
+
+
+
+
+  subroutine Brams2Post_tke (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'TKEP' from var_table
+    ! OutputField <- max(OutputField, 0.0)
+
+    call GetVarFromMemToOutput ('TKEP', oneBramsGrid%currGrid, OutputField)
+    OutputField = max(OutputField, 0.0)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'turb kinetic energy'
+    onePostGrid%fieldUnits = 'm2/s2'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_tke
+
+
+
+
+  subroutine Brams2Post_cloud (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+
+    ! OutputField <- field 'RCP' from var_table
+    ! OutputField <- OutputField * 1.e3
+    ! OutputField <- max(OutputField, 0.0)
+
+    call GetVarFromMemToOutput ('RCP', oneBramsGrid%currGrid, OutputField)
+    OutputField = OutputField * 1.e3
+    OutputField = max(OutputField, 0.0)
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 3
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'cloud mix ratio'
+    onePostGrid%fieldUnits = 'g/kg'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_cloud
+  
+  
+  
+  subroutine Brams2Post_pwt (varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N04(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N05(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    
+    ScrT3N05 = 0.0
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    call GetVarFromMemToOutput ('RCP', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    call GetVarFromMemToOutput ('RRP', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    call GetVarFromMemToOutput ('RPP', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    call GetVarFromMemToOutput ('RSP', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    call GetVarFromMemToOutput ('RAP', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    call GetVarFromMemToOutput ('RGP', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    call GetVarFromMemToOutput ('RHP', oneBramsGrid%currGrid, ScrT3N04)
+    ScrT3N05 = ScrT3N05 + ScrT3N04
+    
+    ScrT3N05 = max(ScrT3N05, 0.0)
+    
+    
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call rams_comp_dn0 (ScrT3N01, ScrT3N02, ScrT3N03, ScrT2N01, oneBramsGrid%pi01dn, &
+         oneBramsGrid%th01dn, oneBramsGrid%ztn, oneBramsGrid%ztop, oneBramsGrid%dzmn)
+    ScrT3N05=ScrT3N05*ScrT3N03
+    call comp_vertint (ScrT3N05,ScrT3N05,ScrT2N01,oneBramsGrid%ztop,oneBramsGrid%zmn)
+    
+    call rams_get_surface(OutputField, ScrT3N05)
+
+    OutputField=OutputField*0.1
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'precipitable total water'
+    onePostGrid%fieldUnits = 'cm'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_pwt
+  
+  
+  
+  
+  subroutine Brams2Post_slp_metar(varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid,ScrT3N01)
+    call RAMS_comp_press(ScrT3N01)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_tempk(ScrT3N02,ScrT3N01)
+    call comp_slp_metar(OutputField,ScrT3N01,ScrT2N01,ScrT3N02,oneBramsGrid%ztn)
+    
+
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'sea level pressure -  METAR formulation'
+    onePostGrid%fieldUnits = 'mb'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_slp_metar
+  
+  
+  
+  
+subroutine Brams2Post_td2m(varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+    
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N02(oneBramsGrid%mxp, oneBramsGrid%myp)    
+    real :: ScrT2N03(oneBramsGrid%mxp, oneBramsGrid%myp)    
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N04(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT6N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N04(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N05(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N06(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+
+    
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_speed (ScrT3N01,ScrT3N02)
+    call GetVarFromMemToOutput ('RV', oneBramsGrid%currGrid,ScrT3N02 )
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid,ScrT3N03)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N04)
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call GetVarFromMemToOutput ('USTAR', oneBramsGrid%currGrid, ScrT6N01)
+    call GetVarFromMemToOutput ('PATCH_ROUGH', oneBramsGrid%currGrid, ScrT6N02)
+    call GetVarFromMemToOutput ('CAN_RVAP', oneBramsGrid%currGrid, ScrT6N03)
+    call GetVarFromMemToOutput ('PATCH_AREA', oneBramsGrid%currGrid, ScrT6N04)
+    call GetVarFromMemToOutput ('RSTAR', oneBramsGrid%currGrid, ScrT6N05)
+    call GetVarFromMemToOutput ('CAN_TEMP', oneBramsGrid%currGrid, ScrT6N06)
+    
+    call rams_reduced_rv (OutputField, ScrT3N01,ScrT6N01,ScrT6N05,2.,oneBramsGrid%ztn(2), &
+                           ScrT6N02,ScrT6N04,ScrT6N03,ScrT3N02,ScrT3N03,ScrT2N01, &
+                           oneBramsGrid%ztop,ScrT6N06,ScrT3N04)
+    
+    OutputField=OutputField*1.e3
+    OutputField = max(OutputField, 0.0)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call GetVarFromMemToOutput ('CAN_TEMP', oneBramsGrid%currGrid, ScrT6N03)
+    call GetVarFromMemToOutput ('TSTAR', oneBramsGrid%currGrid, ScrT6N05)
+    
+    call rams_reduced_temp (ScrT2N02, ScrT3N01, ScrT6N01, ScrT6N05, 2., oneBramsGrid%ztn(2), &
+                             ScrT6N02, ScrT6N04, ScrT6N03, ScrT3N02, ScrT3N03, ScrT2N01, &
+                             oneBramsGrid%ztop)
+                             
+    ScrT2N03=(ScrT3N03(:,:,1)+ScrT3N03(:,:,2))*0.5
+    call rams_comp_tempk (ScrT2N02, ScrT2N03)
+    call RAMS_comp_dewK_2m (OutputField, ScrT2N03, ScrT2N02)
+    call RAMS_comp_tempC (OutputField)
+    
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'dewpoint temp in 2m'
+    onePostGrid%fieldUnits = 'C'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_td2m
+  
+  
+  
+  
+  subroutine Brams2Post_u10m(varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+    
+    integer :: firstX, lastX, firstY, lastY
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT6N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N04(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_speed (ScrT3N01,ScrT3N02)
+    
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid,ScrT3N03)
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call GetVarFromMemToOutput ('USTAR', oneBramsGrid%currGrid, ScrT6N01)
+    call GetVarFromMemToOutput ('PATCH_ROUGH', oneBramsGrid%currGrid, ScrT6N02)
+    call GetVarFromMemToOutput ('CAN_TEMP', oneBramsGrid%currGrid, ScrT6N03)
+    call GetVarFromMemToOutput ('PATCH_AREA', oneBramsGrid%currGrid, ScrT6N04)
+    
+    call rams_reduced_wind (OutputField,ScrT3N01,ScrT6N01,10.,oneBramsGrid%ztn(2),ScrT6N02,ScrT6N04, &
+                             ScrT6N03,ScrT3N02,ScrT3N03,ScrT2N01,oneBramsGrid%ztop)
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, ScrT3N02)
+    
+    firstX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+1
+    lastX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+oneBramsGrid%mxp
+    firstY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+1
+    lastY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+oneBramsGrid%myp
+    call RAMS_comp_dir (ScrT3N01, ScrT3N02, oneBramsGrid%xtn(firstX:lastX), oneBramsGrid%ytn(firstY:lastY), &
+                        oneBramsGrid%polelat, oneBramsGrid%polelon)
+    call calc_u10m (OutputField,ScrT3N01)
+    
+    !--- Indefinindo campos "zerados" - ex: analise ---
+    if (maxval(OutputField)==0.0 .and. minval(OutputField)==0.0) OutputField=-9.99e+33
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'Zonal Wind - 10m'
+    onePostGrid%fieldUnits = 'm/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_u10m
+  
+  
+  
+  
+  subroutine Brams2Post_v10m(varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+    
+    integer :: firstX, lastX, firstY, lastY
+    real :: OutputField(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT2N01(oneBramsGrid%mxp, oneBramsGrid%myp)
+    real :: ScrT3N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT3N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%mzp)
+    real :: ScrT6N01(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N02(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N03(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    real :: ScrT6N04(oneBramsGrid%mxp, oneBramsGrid%myp, oneBramsGrid%npatch)
+    
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, ScrT3N02)
+    call rams_comp_speed (ScrT3N01,ScrT3N02)
+    call GetVarFromMemToOutput ('THETA', oneBramsGrid%currGrid, ScrT3N02)
+    call GetVarFromMemToOutput ('PI', oneBramsGrid%currGrid,ScrT3N03)
+    call GetVarFromMemToOutput ('TOPT', oneBramsGrid%currGrid, ScrT2N01)
+    call GetVarFromMemToOutput ('USTAR', oneBramsGrid%currGrid, ScrT6N01)
+    call GetVarFromMemToOutput ('PATCH_ROUGH', oneBramsGrid%currGrid, ScrT6N02)
+    call GetVarFromMemToOutput ('CAN_TEMP', oneBramsGrid%currGrid, ScrT6N03)
+    call GetVarFromMemToOutput ('PATCH_AREA', oneBramsGrid%currGrid, ScrT6N04)
+    
+    call rams_reduced_wind (OutputField,ScrT3N01,ScrT6N01,10.,oneBramsGrid%ztn(2),ScrT6N02,ScrT6N04, &
+                             ScrT6N03,ScrT3N02,ScrT3N03,ScrT2N01,oneBramsGrid%ztop)
+    call GetVarFromMemToOutput ('UP', oneBramsGrid%currGrid, ScrT3N01)
+    call GetVarFromMemToOutput ('VP', oneBramsGrid%currGrid, ScrT3N02)
+    
+    firstX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+1
+    lastX = oneBramsGrid%nodei0(oneBramsGrid%mynum)+oneBramsGrid%mxp
+    firstY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+1
+    lastY = oneBramsGrid%nodej0(oneBramsGrid%mynum)+oneBramsGrid%myp
+    call RAMS_comp_dir (ScrT3N01, ScrT3N02, oneBramsGrid%xtn(firstX:lastX), oneBramsGrid%ytn(firstY:lastY), &
+                        oneBramsGrid%polelat, oneBramsGrid%polelon)
+    call calc_v10m (OutputField,ScrT3N01)
+    
+    !--- Indefinindo campos "zerados" - ex: analise ---
+    if (maxval(OutputField)==0.0 .and. minval(OutputField)==0.0) OutputField=-9.99e+33
+    
+    ! register Grads fields on PostGrid
+
+    onePostGrid%ivar_type = 2
+    onePostGrid%fieldName = varName
+    onePostGrid%fieldDescription = 'Meridional Wind - 10m'
+    onePostGrid%fieldUnits = 'm/s'
+
+    ! output binary field
+
+    call OutputGradsField (oneBramsGrid, onePostGrid, OutputField)
+  end subroutine Brams2Post_v10m
+  
+end module ModPostOneFieldUtils
+
+
+
+
+

@@ -1,0 +1,951 @@
+###############################################################################
+## Common classes
+###############################################################################
+    [[METO_XC40]]
+        env-script = """
+                                module swap PrgEnv-cray PrgEnv-cray/5.2.82
+                                module load cray-netcdf-hdf5parallel/4.3.2
+                                module load cray-snplauncher/7.0.4
+                                module list 2>&1
+                                """
+        [[[job]]]
+            batch system = pbs
+            execution time limit = PT10M
+        [[[remote]]]
+            host = $(rose host-select {{ METO_HPC_GROUP }})
+        [[[directives]]]
+            -S = /bin/bash
+            {% if TRUSTZONE == 'research' %}
+                -P = foundation
+            {% else %}
+                {% if PROJECT is defined %}
+                    -P = {{ PROJECT }}
+                {% endif %}
+                # if PROJECT is not defined, use user default project by not setting -P
+            {% endif %}
+
+# Family for jobs that will use the shared queue to run on MAMU nodes
+#   Requires that the environment variable MPI_NUM_TASKS be set to the number of MPI tasks
+#   A suitable ncpus directive should also be set
+    [[METO_XC40_SHARED_QUEUE]]
+        inherit = None, METO_XC40
+        [[[directives]]]
+            -q = shared
+        [[[environment]]]
+            ROSE_LAUNCHER = mpiexec
+            ROSE_LAUNCHER_PREOPTS = -n ${MPI_NUM_TASKS:-1}
+            ROSE_LAUNCHER_ULIMIT_OPTS = -s unlimited -c unlimited
+
+# Family for jobs that will use the parallel queue to run on whole compute nodes
+#     Requires that the environment variable MPI_NUM_TASKS be set to the number of MPI tasks
+#     Requires that the environment variable OMP_NUM_THREADS be set to the number of OpenMP threads per task
+#     A suitable select directive should also be set
+    [[METO_XC40_NORMAL_QUEUE]]
+        inherit = None, METO_XC40
+        [[[directives]]]
+            -q = normal
+        [[[environment]]]
+            CORES_PER_NODE = 36
+            NUMA_REGIONS_PER_NODE = 2
+            HYPERTHREADS = 1
+            MPI_TASKS_PER_NODE = $((CORES_PER_NODE*HYPERTHREADS/OMP_NUM_THREADS))
+            ROSE_LAUNCHER_PREOPTS = -ss -n $MPI_NUM_TASKS -N $MPI_TASKS_PER_NODE -S $((MPI_TASKS_PER_NODE/NUMA_REGIONS_PER_NODE)) -d $OMP_NUM_THREADS -j $HYPERTHREADS
+
+# Families for different counts of CPUs, nodes, MPI tasks and OpenMP threads
+# We need all these separate families to make sure environment variables come out in the correct order
+# Each compute job should inherit from one each of the CORES, OMPTHREADS and MPITASKS groups, in that order
+    [[METO_XC40_CORES_1]]
+        inherit = METO_XC40_SHARED_QUEUE
+        [[[directives]]]
+            -l ncpus = 1
+
+    [[METO_XC40_CORES_8]]
+        inherit = METO_XC40_SHARED_QUEUE
+        [[[directives]]]
+            -l ncpus = 8
+
+    [[METO_XC40_CORES_36]]
+        inherit = METO_XC40_NORMAL_QUEUE
+        [[[directives]]]
+            -l select = 1:coretype=broadwell
+
+    [[METO_XC40_OMPTHREADS_1]]
+        [[[environment]]]
+            OMP_NUM_THREADS = 1
+
+    [[METO_XC40_OMPTHREADS_9]]
+        [[[environment]]]
+            OMP_NUM_THREADS = 9
+
+    [[METO_XC40_MPITASKS_1]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 1
+            NPROC = $MPI_NUM_TASKS
+    
+    [[METO_XC40_MPITASKS_4]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 4
+            NPROC = $MPI_NUM_TASKS
+
+    [[METO_XC40_MPITASKS_8]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 8
+            NPROC = $MPI_NUM_TASKS
+
+    [[METO_XC40_MPITASKS_36]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 36
+            NPROC = $MPI_NUM_TASKS
+
+###############################################################################
+## Build jobs
+###############################################################################
+# Remote extract and build
+    [[METO_XC40_BUILD]]
+        inherit = None, METO_XC40_SHARED_QUEUE, EXTRACT_AND_BUILD
+        [[[directives]]]
+            -l ncpus = 6
+            -l mem = 1800MB
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 6
+            JULES_PLATFORM = meto-xc40-cce
+
+# Debug build for Loobos jobs
+    [[fcm_make_meto_xc40_cce_debug]]
+        inherit = METO_XC40_BUILD
+        [[[environment]]]
+            JULES_BUILD = debug
+            JULES_OMP = noomp
+
+# Normal build without OpenMP
+    [[fcm_make_meto_xc40_cce_noomp]]
+        inherit = METO_XC40_BUILD
+        [[[environment]]]
+            JULES_BUILD = normal
+            JULES_OMP = noomp
+
+# Normal build with OpenMP
+    [[fcm_make_meto_xc40_cce_omp]]
+        inherit = METO_XC40_BUILD
+        [[[environment]]]
+            JULES_BUILD = normal
+            JULES_OMP = omp
+
+###############################################################################
+## Compute jobs
+###############################################################################
+# Family for Loobos jobs on the XC40
+    [[METO_XC40_LOOBOS]]
+        inherit = LOOBOS, COMPUTE, METO_XC40_CORES_1, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_1
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_xc40_cce_debug
+            LOOBOS_INSTALL_DIR = /projects/jules/datasets/loobos
+
+    [[meto_xc40_cce_loobos_gl7]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl7
+
+    [[meto_xc40_cce_loobos_gl4]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl4
+
+    [[meto_xc40_cce_loobos_gl4_cable]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl4
+            ROSE_APP_OPT_CONF_KEYS=cable
+
+    [[meto_xc40_cce_loobos_gl8]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl8
+
+    [[meto_xc40_cce_loobos_gl8_medlyn]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_gl8_medlyn
+
+    [[meto_xc40_cce_loobos_vegdrag]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_vegdrag
+
+    [[meto_xc40_cce_loobos_euro4]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_euro4
+
+    [[meto_xc40_cce_loobos_forecast]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_forecast
+
+    [[meto_xc40_cce_loobos_ukv]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_ukv
+
+    [[meto_xc40_cce_loobos_trif_spinup]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_trif_spinup
+
+    [[meto_xc40_cce_loobos_trif]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_trif
+            DUMP_FILE = ../meto_xc40_cce_loobos_trif_spinup/output/meto_xc40_cce_loobos_trif_spinup.dump.19971231.82800.nc
+
+    [[meto_xc40_cce_loobos_julesc_spinup]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_julesc_spinup
+
+    [[meto_xc40_cce_loobos_julesc]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_julesc
+            DUMP_FILE = ../meto_xc40_cce_loobos_julesc_spinup/output/meto_xc40_cce_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_xc40_cce_loobos_jules_c1p1]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_c1p1
+            DUMP_FILE = ../meto_xc40_cce_loobos_julesc_spinup/output/meto_xc40_cce_loobos_julesc_spinup.dump.19971231.82800.nc
+            
+    [[meto_xc40_cce_loobos_jules_c1p1_fire]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_c1p1_fire
+            DUMP_FILE = ../meto_xc40_cce_loobos_julesc_spinup/output/meto_xc40_cce_loobos_julesc_spinup.dump.19971231.82800.nc
+
+    [[meto_xc40_cce_loobos_jules_layeredcn_spinup]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_layeredcn_spinup
+
+    [[meto_xc40_cce_loobos_jules_layeredcn]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_layeredcn
+            DUMP_FILE = ../meto_xc40_cce_loobos_jules_layeredcn_spinup/output/meto_xc40_cce_loobos_jules_layeredcn_spinup.dump.19971231.82800.nc
+
+    [[meto_xc40_cce_loobos_jules_cn_spinup]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_cn_spinup
+
+    [[meto_xc40_cce_loobos_jules_cn]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_cn
+            DUMP_FILE = ../meto_xc40_cce_loobos_jules_cn_spinup/output/meto_xc40_cce_loobos_jules_cn_spinup.dump.19971231.82800.nc
+
+    [[meto_xc40_cce_loobos_jules_es_1p0_spinup]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_es_1p0_spinup
+
+    [[meto_xc40_cce_loobos_jules_es_1p0]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_jules_es_1p0
+            DUMP_FILE = ../meto_xc40_cce_loobos_jules_es_1p0_spinup/output/meto_xc40_cce_loobos_jules_es_1p0_spinup.dump.19971231.82800.nc
+
+    [[meto_xc40_cce_loobos_crops]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crops
+
+    [[meto_xc40_cce_loobos_prescribe_sthuf]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_prescribe_sthuf
+
+    [[meto_xc40_cce_loobos_irrig]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_irrig
+
+    [[meto_xc40_cce_loobos_irrig_nirrtile]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_irrig_nirrtile
+
+    [[meto_xc40_cce_loobos_fire_spinup]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_fire_spinup
+
+    [[meto_xc40_cce_loobos_fire]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_fire
+            DUMP_FILE = ../meto_xc40_cce_loobos_fire_spinup/output/meto_xc40_cce_loobos_fire_spinup.dump.19971231.82800.nc
+
+    [[meto_xc40_cce_loobos_daily_disagg]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_daily_disagg
+
+    [[meto_xc40_cce_loobos_crm1_traitF]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm1_traitF
+
+    [[meto_xc40_cce_loobos_crm4_traitF]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm4_traitF
+
+    [[meto_xc40_cce_loobos_crm5_traitF]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm5_traitF
+
+    [[meto_xc40_cce_loobos_crm6_traitF]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitF
+
+    [[meto_xc40_cce_loobos_crm6_traitT]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitT
+
+    [[meto_xc40_cce_loobos_crm6_traitT_farquhar]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitT
+            ROSE_APP_OPT_CONF_KEYS = farquhar
+
+    [[meto_xc40_cce_loobos_crm6_traitF_srfT]]
+        inherit = METO_XC40_LOOBOS
+        [[[environment]]]
+            ROSE_TASK_APP = loobos_crm6_traitF_srfT
+
+    [[METO_XC40_GSWP2]]
+        inherit = GSWP2, COMPUTE
+        pre-script = gen_gswp2_drive_file
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_xc40_cce_omp
+            GSWP2_INSTALL_DIR = /projects/jules/datasets/gswp2
+
+    [[METO_XC40_ERAINT]]
+        inherit = ERAINT, COMPUTE
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_xc40_cce_omp
+            ERAINT_INSTALL_DIR = /projects/jules/datasets/eraint
+
+# For GSWP2 rivers, use MPI
+    [[meto_xc40_cce_gswp2_rivers]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_rivers
+
+# For GSWP2 rivers spinup, use MPI
+    [[meto_xc40_cce_gswp2_rivers_spinup]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_rivers_spinup
+
+# For GSWP2 rivers restart, use MPI
+    [[meto_xc40_cce_gswp2_rivers_restart]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_rivers_restart
+            DUMP_FILE = ../meto_xc40_cce_gswp2_rivers_spinup/output/meto_xc40_cce_gswp2_rivers_spinup.dump.19820701.10800.nc
+
+# For GSWP2 trip, use MPI
+    [[meto_xc40_cce_gswp2_trip]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_trip
+
+# For GSWP2 trip spinup, use MPI
+    [[meto_xc40_cce_gswp2_trip_spinup]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_trip_spinup
+
+# For GSWP2 trip restart, use MPI
+    [[meto_xc40_cce_gswp2_trip_restart]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_trip_restart
+            DUMP_FILE = ../meto_xc40_cce_gswp2_trip_spinup/output/meto_xc40_cce_gswp2_trip_spinup.dump.19820701.10800.nc
+
+# For GSWP2 irrig limit low river storage, use MPI
+    [[meto_xc40_cce_gswp2_irrig_limit_low_river_storage]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_irrig_limit_low_river_storage
+            DUMP_FILE = ../meto_xc40_cce_gswp2_trip_spinup/output/meto_xc40_cce_gswp2_trip_spinup.dump.19820701.10800.nc
+
+# For GSWP2 irrig limit high river storage, use MPI
+    [[meto_xc40_cce_gswp2_irrig_limit_high_river_storage]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_irrig_limit_high_river_storage
+            DUMP_FILE = ../meto_xc40_cce_gswp2_trip_spinup/output/meto_xc40_cce_gswp2_trip_spinup.dump.19820701.10800.nc
+
+# For GSWP2 closures, use MPI
+    [[meto_xc40_cce_gswp2_closures]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_closures
+
+# For GSWP2 euro4, use MPI
+    [[meto_xc40_cce_gswp2_euro4]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_euro4
+
+# For GSWP2 gl7, use MPI
+    [[meto_xc40_cce_gswp2_gl7]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_gl7
+
+# For GSWP2 gl4, use MPI
+    [[meto_xc40_cce_gswp2_gl4]]
+        inherit = METO_XC40_GSWP2, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            ROSE_TASK_APP = gswp2_gl4
+
+# For GSWP2 ukv, use MPI
+    [[GSWP2_UKV]]
+        [[[environment]]]
+            EXT_NAME = meto_xc40_cce_gswp2_ukv
+            ROSE_TASK_APP = gswp2_ukv
+            ROSE_APP_OPT_CONF_KEYS=threading
+
+    [[meto_xc40_cce_gswp2_ukv_noomp]]
+        inherit = METO_XC40_GSWP2, GSWP2_UKV, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_36
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_xc40_cce_noomp
+
+    [[meto_xc40_cce_gswp2_ukv_9_omp_threads]]
+        inherit = METO_XC40_GSWP2, GSWP2_UKV, METO_XC40_CORES_36, METO_XC40_OMPTHREADS_9, METO_XC40_MPITASKS_4
+
+# For ERAINT 2ddata, use MPI
+    [[meto_xc40_cce_eraint_rfm_2ddata]]
+        inherit = METO_XC40_ERAINT, METO_XC40_CORES_8, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_8
+        [[[environment]]]
+            ROSE_TASK_APP = eraint_rfm_2ddata
+
+    [[meto_xc40_cce_eraint_trip_2ddata]]
+        inherit = METO_XC40_ERAINT, METO_XC40_CORES_8, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_8
+        [[[environment]]]
+            ROSE_TASK_APP = eraint_trip_2ddata
+            DUMP_FILE = $ERAINT_INSTALL_DIR/brahma_eraint.dump.19951031.0.nc
+
+    [[METO_XC40_IMOGEN]]
+        inherit = IMOGEN, COMPUTE
+        [[[environment]]]
+            BUILD_NAME = fcm_make_meto_xc40_cce_omp
+            IMOGEN_INSTALL_DIR = /projects/jules/rose-stem-inputs/imogen
+
+   [[meto_xc40_cce_imogen_layeredc_spinup]]
+        inherit = METO_XC40_IMOGEN, METO_XC40_CORES_8, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_8
+        [[[environment]]]
+            ROSE_TASK_APP = imogen_layeredc_spinup
+
+    [[meto_xc40_cce_imogen_layeredc]]
+        inherit = METO_XC40_IMOGEN, METO_XC40_CORES_8, METO_XC40_OMPTHREADS_1, METO_XC40_MPITASKS_8
+        [[[environment]]]
+            ROSE_TASK_APP = imogen_layeredc
+            DUMP_FILE = ../meto_xc40_cce_imogen_layeredc_spinup/output/meto_xc40_cce_imogen_layeredc_spinup.dump.18650101.0.nc
+
+###############################################################################
+## Comparison jobs
+###############################################################################
+    [[METO_XC40_NETCDF_COMPARISON]]
+        inherit = KGO_CHECK, COMPARISON, METO_XC40_SHARED_QUEUE
+        [[[job]]]
+            execution time limit = PT5M
+        [[[environment]]]
+            CMD_CMP = /projects/jules/nccmp/bin/nccmp -d --force
+            KGO_DIR = /projects/jules/rose-stem-kgo/{{ KGO_VERSION }}
+
+    [[nccmp_meto_xc40_cce_loobos_gl7]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_gl7/output
+
+    [[nccmp_meto_xc40_cce_loobos_gl4]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_gl4/output
+
+    [[nccmp_meto_xc40_cce_loobos_gl8]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_gl8/output
+
+    [[nccmp_meto_xc40_cce_loobos_gl8_medlyn]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_gl8_medlyn/output
+
+    [[nccmp_meto_xc40_cce_loobos_vegdrag]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_vegdrag/output
+
+    [[nccmp_meto_xc40_cce_loobos_euro4]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_euro4/output
+
+    [[nccmp_meto_xc40_cce_loobos_forecast]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_forecast/output
+
+    [[nccmp_meto_xc40_cce_loobos_ukv]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_ukv/output
+
+    [[nccmp_meto_xc40_cce_loobos_trif]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_trif/output
+
+    [[nccmp_meto_xc40_cce_loobos_julesc]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_julesc/output
+
+    [[nccmp_meto_xc40_cce_loobos_jules_c1p1]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_jules_c1p1/output
+
+    [[nccmp_meto_xc40_cce_loobos_jules_c1p1_fire]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_jules_c1p1_fire/output
+
+    [[nccmp_meto_xc40_cce_loobos_jules_layeredcn]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_jules_layeredcn/output
+
+    [[nccmp_meto_xc40_cce_loobos_jules_cn]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_jules_cn/output
+
+    [[nccmp_meto_xc40_cce_loobos_jules_es_1p0]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_jules_es_1p0/output
+
+    [[nccmp_meto_xc40_cce_loobos_fire]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_fire/output
+
+    [[nccmp_meto_xc40_cce_loobos_crops]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crops/output
+
+    [[nccmp_meto_xc40_cce_loobos_prescribe_sthuf]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_prescribe_sthuf/output
+
+    [[nccmp_meto_xc40_cce_loobos_irrig]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_irrig/output
+
+    [[nccmp_meto_xc40_cce_loobos_irrig_nirrtile]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_irrig_nirrtile/output
+
+    [[nccmp_meto_xc40_cce_loobos_daily_disagg]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_daily_disagg/output
+
+    [[nccmp_meto_xc40_cce_loobos_crm1_traitF]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crm1_traitF/output
+
+    [[nccmp_meto_xc40_cce_loobos_crm4_traitF]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crm4_traitF/output
+
+    [[nccmp_meto_xc40_cce_loobos_crm5_traitF]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crm5_traitF/output
+
+    [[nccmp_meto_xc40_cce_loobos_crm6_traitF]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crm6_traitF/output
+
+    [[nccmp_meto_xc40_cce_loobos_crm6_traitT]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crm6_traitT/output
+
+    [[nccmp_meto_xc40_cce_loobos_crm6_traitT_farquhar]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crm6_traitT_farquhar/output
+
+    [[nccmp_meto_xc40_cce_loobos_crm6_traitF_srfT]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_loobos_crm6_traitF_srfT/output
+
+    [[nccmp_meto_xc40_cce_gswp2_rivers]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_rivers/output
+
+    [[nccmp_meto_xc40_cce_gswp2_rivers_restart]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_rivers_restart/output
+
+    [[nccmp_meto_xc40_cce_gswp2_trip]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_trip/output
+
+    [[nccmp_meto_xc40_cce_gswp2_trip_restart]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_trip_restart/output
+
+    [[nccmp_meto_xc40_cce_gswp2_irrig_limit_low_river_storage]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_irrig_limit_low_river_storage/output
+    
+    [[nccmp_meto_xc40_cce_gswp2_irrig_limit_high_river_storage]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_irrig_limit_high_river_storage/output
+    
+    [[nccmp_meto_xc40_cce_gswp2_closures]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_closures/output
+
+    [[nccmp_meto_xc40_cce_gswp2_euro4]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_euro4/output
+
+    [[nccmp_meto_xc40_cce_gswp2_gl7]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_gl7/output
+
+    [[nccmp_meto_xc40_cce_gswp2_gl4]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_gl4/output
+
+    [[nccmp_meto_xc40_cce_gswp2_ukv_noomp_kgo]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_ukv_noomp/output
+
+    [[nccmp_meto_xc40_cce_gswp2_ukv_9_omp_threads_vs_noomp]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            KGO_DIR = ../meto_xc40_cce_gswp2_ukv_noomp/output
+            OUTPUT_DIR = ../meto_xc40_cce_gswp2_ukv_9_omp_threads/output
+
+    [[nccmp_meto_xc40_cce_eraint_rfm_2ddata]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_eraint_rfm_2ddata/output
+
+    [[nccmp_meto_xc40_cce_eraint_trip_2ddata]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_eraint_trip_2ddata/output
+
+    [[nccmp_meto_xc40_cce_imogen_layeredc]]
+        inherit = METO_XC40_NETCDF_COMPARISON
+        [[[environment]]]
+            OUTPUT_DIR = ../meto_xc40_cce_imogen_layeredc/output
+
+
+###############################################################################
+## Housekeeping jobs
+###############################################################################
+    [[METO_XC40_HOUSEKEEPING]]
+        inherit = HOUSEKEEPING, METO_XC40_SHARED_QUEUE
+        [[[job]]]
+            execution time limit = PT5M
+
+    [[housekeep_meto_xc40_cce_loobos_gl7]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_gl7
+
+    [[housekeep_meto_xc40_cce_loobos_gl4]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_gl4
+
+    [[housekeep_meto_xc40_cce_loobos_gl8]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_gl8
+
+    [[housekeep_meto_xc40_cce_loobos_gl8_medlyn]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_gl8_medlyn
+
+    [[housekeep_meto_xc40_cce_loobos_vegdrag]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_vegdrag
+
+    [[housekeep_meto_xc40_cce_loobos_euro4]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_euro4
+
+    [[housekeep_meto_xc40_cce_loobos_forecast]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+           DIR1 = ../meto_xc40_cce_loobos_forecast
+
+    [[housekeep_meto_xc40_cce_loobos_ukv]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_ukv
+
+    [[housekeep_meto_xc40_cce_loobos_trif_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_trif_spinup
+
+    [[housekeep_meto_xc40_cce_loobos_trif]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_trif
+
+    [[housekeep_meto_xc40_cce_loobos_julesc_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_julesc_spinup
+
+    [[housekeep_meto_xc40_cce_loobos_julesc]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_julesc
+
+    [[housekeep_meto_xc40_cce_loobos_jules_c1p1]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_c1p1
+
+    [[housekeep_meto_xc40_cce_loobos_jules_c1p1_fire]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_c1p1_fire
+
+    [[housekeep_meto_xc40_cce_loobos_jules_layeredcn_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_layeredcn_spinup
+
+    [[housekeep_meto_xc40_cce_loobos_jules_layeredcn]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_layeredcn
+
+    [[housekeep_meto_xc40_cce_loobos_jules_cn_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_cn_spinup
+
+    [[housekeep_meto_xc40_cce_loobos_jules_cn]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_cn
+
+    [[housekeep_meto_xc40_cce_loobos_jules_es_1p0_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_es_1p0_spinup
+
+    [[housekeep_meto_xc40_cce_loobos_jules_es_1p0]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_jules_es_1p0
+
+    [[housekeep_meto_xc40_cce_loobos_crops]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crops
+
+    [[housekeep_meto_xc40_cce_loobos_prescribe_sthuf]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_prescribe_sthuf
+
+    [[housekeep_meto_xc40_cce_loobos_irrig]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_irrig
+
+    [[housekeep_meto_xc40_cce_loobos_irrig_nirrtile]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_irrig_nirrtile
+
+    [[housekeep_meto_xc40_cce_loobos_fire_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_fire_spinup
+
+    [[housekeep_meto_xc40_cce_loobos_fire]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_fire
+
+    [[housekeep_meto_xc40_cce_loobos_daily_disagg]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_daily_disagg
+
+    [[housekeeping_meto_xc40_cce_loobos_crm1_traitF]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crm1_traitF
+
+    [[housekeeping_meto_xc40_cce_loobos_crm4_traitF]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crm4_traitF
+
+    [[housekeeping_meto_xc40_cce_loobos_crm5_traitF]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crm5_traitF
+
+    [[housekeeping_meto_xc40_cce_loobos_crm6_traitF]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crm6_traitF
+
+    [[housekeeping_meto_xc40_cce_loobos_crm6_traitT]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crm6_traitT
+
+    [[housekeeping_meto_xc40_cce_loobos_crm6_traitT_farquhar]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crm6_traitT_farquhar
+
+    [[housekeeping_meto_xc40_cce_loobos_crm6_traitF_srfT]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_loobos_crm6_traitF_srfT
+
+    [[housekeep_meto_xc40_cce_gswp2_rivers]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_rivers
+
+    [[housekeep_meto_xc40_cce_gswp2_rivers_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_rivers_spinup
+
+    [[housekeep_meto_xc40_cce_gswp2_rivers_restart]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_rivers_restart
+
+    [[housekeep_meto_xc40_cce_gswp2_trip]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_trip
+
+    [[housekeep_meto_xc40_cce_gswp2_trip_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_trip_spinup
+
+    [[housekeep_meto_xc40_cce_gswp2_trip_restart]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_trip_restart
+
+    [[housekeep_meto_xc40_cce_gswp2_irrig_limit_low_river_storage]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_irrig_limit_low_river_storage
+
+    [[housekeep_meto_xc40_cce_gswp2_irrig_limit_high_river_storage]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_irrig_limit_high_river_storage
+                
+    [[housekeep_meto_xc40_cce_gswp2_closures]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_closures
+
+    [[housekeep_meto_xc40_cce_gswp2_euro4]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_euro4
+
+    [[housekeep_meto_xc40_cce_gswp2_gl7]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_gl7
+
+    [[housekeep_meto_xc40_cce_gswp2_gl4]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_gl4
+
+    [[housekeep_meto_xc40_cce_gswp2_ukv]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_gswp2_ukv_noomp ../meto_xc40_cce_gswp2_ukv_9_omp_threads
+
+    [[housekeep_meto_xc40_cce_eraint_rfm_2ddata]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_eraint_rfm_2ddata
+
+    [[housekeep_meto_xc40_cce_eraint_trip_2ddata]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_eraint_trip_2ddata
+
+    [[housekeep_meto_xc40_cce_imogen_layeredc_spinup]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_imogen_layeredc_spinup
+
+    [[housekeep_meto_xc40_cce_imogen_layeredc]]
+        inherit = METO_XC40_HOUSEKEEPING
+        [[[environment]]]
+            DIR1 = ../meto_xc40_cce_imogen_layeredc

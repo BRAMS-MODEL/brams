@@ -1,0 +1,93 @@
+###############################################################################
+## Determine TRUSTZONE and set METO_HPC_GROUP if not defined.
+###############################################################################
+{% if 'TRUSTZONE' in environ %}
+  {%- set TRUSTZONE=environ['TRUSTZONE'] %}
+{%- else %}
+  {%- set TRUSTZONE='research' %}
+{%- endif %}
+
+{% if METO_HPC_GROUP is not defined %}
+  {%- if TRUSTZONE == 'collaboration' %}
+    {%- set METO_HPC_GROUP='xcs-c' %}
+  {% else %}
+    {%- set METO_HPC_GROUP='xc' %}
+  {%- endif %}
+{%- endif %}
+
+
+
+###############################################################################
+## Imports
+###############################################################################
+{% if TRUSTZONE == 'research' %}
+%include 'include/meto/graph-linux-intel.rc'
+%include 'include/meto/graph-linux-gfortran.rc'
+%include 'include/meto/graph-linux-nagfor.rc'
+{% endif %}
+%include 'include/meto/graph-xc40-cce.rc'
+
+###############################################################################
+## Name graphs
+###############################################################################
+{%- set name_graphs = {
+         "umdp3_check" : "umdp3_checker",
+         "metadata_check" : "metadata_checker",
+} %}
+{% if TRUSTZONE == 'research' %}
+{%- do name_graphs.update(name_graphs_linux_intel.items()) %}
+{%- do name_graphs.update(name_graphs_linux_gfortran.items()) %}
+{%- do name_graphs.update(name_graphs_linux_nagfor.items()) %}
+{% endif %}
+{%- do name_graphs.update(name_graphs_xc40_cce.items()) %}
+
+
+###############################################################################
+## Group definitions
+###############################################################################
+{%- set groups = {
+        "all" : ["linux", "xc40"],
+        
+        "loobos" : ["linux_loobos", "xc40_loobos"],
+        
+        "gswp2" : ["linux_gswp2", "xc40_gswp2"],
+        
+        "eraint" : ["linux_eraint", "xc40_eraint"],
+        
+        "imogen" : ["linux_imogen", "xc40_imogen"],
+        
+        "linux" : ["linux_intel", "linux_gfortran", "linux_nagfor", "scripts"],
+        
+        "linux_loobos" : ["linux_intel_loobos", "linux_gfortran_loobos", "linux_nagfor_loobos"],
+        
+        "linux_gswp2" : ["linux_intel_gswp2", "linux_gfortran_gswp2"],
+        
+        "linux_eraint" : ["linux_intel_eraint", "linux_gfortran_eraint"],
+        
+        "linux_imogen" : ["linux_intel_imogen", "linux_gfortran_imogen"],
+ 
+        "xc40" : ["xc40_cce", "scripts"],
+        
+        "xc40_loobos" : ["xc40_cce_loobos"],
+                                
+        "xc40_gswp2" : ["xc40_cce_gswp2"],
+        
+        "xc40_eraint" : ["xc40_cce_eraint"],
+
+        "xc40_imogen" : ["xc40_cce_imogen"],
+
+	"tutorial_linux" : ["meto_linux_intel_loobos_crops", "meto_linux_gfortran_loobos_crops"],
+
+	"tutorial_xc40" : ["meto_xc40_cce_loobos_crops"],
+
+        "scripts"   : ["umdp3_check", "metadata_check"],
+
+    }
+%}
+{% if TRUSTZONE == 'research' %}
+{%- do groups.update(groups_linux_intel.items()) %}
+{%- do groups.update(groups_linux_gfortran.items()) %}
+{%- do groups.update(groups_linux_nagfor.items()) %}
+{% endif %}
+{%- do groups.update(groups_xc40_cce.items()) %}
+

@@ -1,0 +1,22 @@
+&jules_drive
+data_end='2010-01-03 23:00:00',                 !DSM nao utilizado - lendo do BRAMS
+data_period=3600,                               !DSM nao utilizado - lendo do BRAMS
+data_start='2010-01-03 00:00:00',               !DSM nao utilizado - lendo do BRAMS
+diff_frac_const=0.4,
+file='../from_BRAMS/drive_from_BRAMS.list-xxx', !DSM nao utilizado - lendo do BRAMS
+nfiles=24,                                      !DSM nao utilizado
+interp=9*'nf',
+l_daily_disagg=.false.,
+l_imogen=.false.,
+l_perturb_driving=.false.,
+nvars=9,
+read_list=.true.,
+t_for_snow=274.0
+t_for_con_rain=373.15,
+tpl_name='',
+var='sw_down','lw_down','diff_rad','precip','t','u','v','pstar','q', 
+var_name='sw_downB','lw_downB','diff_radB','precipB','tB','uB','vB','pstarB','qB',
+z1_tq_vary=.false.,
+z1_uv_in=10.0
+z1_tq_in=10.0
+/

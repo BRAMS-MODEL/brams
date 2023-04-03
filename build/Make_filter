@@ -1,0 +1,26 @@
+include paths.mk
+
+PROG = filter
+
+OBJS =  filterOut.o \
+	dump.o \
+	utilsMod.o
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+	$(FC_LOADER) -o $(PROG) $(OBJS) $(LDFLAGS) 
+
+clean:
+	rm -f $(PROG) $(OBJS) *.mod
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+.f90.o:
+	$(F_COMMAND) -c $<
+
+filterOut.o: $(UTILS_DUMP)/filterOut.f90 dump.o utilsMod.o
+	@cp -f $< $(<F:.f90=.f90)
+	$(F_COMMAND) $(<F:.f90=.f90) -I$(UTILS_INCS)
+
+

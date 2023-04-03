@@ -1,0 +1,189 @@
+#Makefile Make_utils
+############################## Change Log ##################################
+# 1.0.0.0
+#
+# 000908 MJB Make.utils ##
+#            New methodology in rules and targets (including removal of
+#            alternate targets for IBM).
+#            Added dependencies on include and use files. ##
+#
+############################################################################
+# Define path and compilation 
+#package        = @PACKAGE_NAME@
+version        = @PACKAGE_VERSION@
+PREFIX         = @prefix@
+FC             = @FC@
+HAVE_HDF5      = @HAVE_HDF5@
+HDF5LIB        = @HDF5LIB@
+HDF5DIR = @HDF5DIR@
+
+CHEM	       = @CHEM@
+
+CCOMP	       = @CCOMP@
+CPCOMP	       = @CPCOMP@
+FCOMP	       = @FCOMP@
+FPCOMP	       = @FPCOMP@
+
+CMACH=       @CMACH@
+PAR_DEFS=    @PAR_DEFS@
+
+HAVE_ZLIB      = @HAVE_ZLIB@
+ZLIB        = @ZLIB@
+
+include utils.mk
+
+ZLIB_LIB =  -L$(ZLIB) -lz
+
+
+ARCHIVE=ar rs
+
+PAR_INCS=./
+PAR_LIBS=./
+
+include paths.mk
+
+FPP_FDEF=-D
+
+ifndef FPCOMP
+$(error You need to set the variable FPCOMP either in configure command line)
+endif
+
+ifeq ($(notdir $(FPCOMP)),mpif90)
+FC=$(FPCOMP)
+#FC=$(FPCOMP) -f90=$(FCOMP)
+CC=$(CPCOMP)
+#CC=$(CPCOMP) -cc=$(CCOMP)
+ # For intel compiler debugging
+          #FC_FLAGS=-O0 -mcmodel=large -check bounds -traceback -fpe0 -check uninit -init=snan,arrays
+          #CCFLAGS=-O0
+ 
+FC_LOADER=$(FC) 
+CC_LOADER=$(CC) 
+endif
+
+ifeq ($(HDF5DIR),)
+HDF5_LIB        = 
+HDF5_INC        = 
+FPP_DEFS        = 
+else
+HDF5_LIB        = -L$(HDF5DIR)/lib -lhdf5hl_fortran -lhdf5_fortran -lhdf5_hl -lhdf5 $(ZLIB_LIB)
+HDF5_INC        = -I$(HDF5DIR)/include
+FPP_VARS        = HDF5
+FPP_DEFS        = $(FPP_FDEF)$(FPP_VARS)
+endif
+
+ifeq ($(notdir $(FPCOMP)),ftn)
+FC=$(FPCOMP) 
+CC=$(CPCOMP) 
+
+FC_LOADER=$(FC) 
+CC_LOADER=$(CC) 
+endif
+
+ifeq ($(notdir $(FPCOMP)),h5pfc)
+FC=$(FPCOMP) 
+CC=$(CPCOMP) 
+
+FC_LOADER=$(FC) 
+CC_LOADER=$(CC) 
+endif
+
+
+ifeq ($(notdir $(FCOMP)),pgf90)
+FC_FLAGS=-fast -O3 -fastsse -Munroll=n:4 #-Mipa=fast,inline,safe  -Msmart
+CCFLAGS=-O3
+#FC_FLAGS=-O0 -traceback -Mbounds -Mchkptr -Mchkstk 
+#CCFLAGS=-O0 -traceback -Mbounds 
+FPP=-Mpreprocess
+endif 
+
+ifeq ($(notdir $(FCOMP)),ifort)
+FC_FLAGS=-O3
+CCFLAGS=-O3
+ # For intel compiler debugging
+         #FC_FLAGS=-O0 -mcmodel=large -check bounds -traceback -fpe0 -check uninit -init=snan,arrays
+         #CCFLAGS=-O0
+ 
+
+FPP=-fpp
+endif
+
+ifeq ($(notdir $(FPCOMP)),mpifort) #NEC COMPILER
+FC=$(FPCOMP) #-traceback
+CC=$(CPCOMP)
+
+FC_LOADER=$(FC) #-traceback
+CC_LOADER=$(CC)
+endif
+ 
+ifeq ($(notdir $(FPCOMP)),mpiifort) #INTEL MPI COMPILER
+FC=$(FPCOMP) #-traceback
+CC=$(CPCOMP)
+
+FC_LOADER=$(FC) #-traceback
+CC_LOADER=$(CC)
+endif
+
+ifeq ($(notdir $(FCOMP)),gfortran)
+FC_FLAGS=-O3 -ffree-form -ffree-line-length-none -static
+#FC_FLAGS=-O0 -ffree-form -ffree-line-length-none -fcheck=bounds -fbacktrace -fcheck=bounds -g -fcheck=all -finit-real=nan # -Wall -ffpe-trap=invalid,zero
+
+ifeq ($(GCC_VER_GTE10),)
+     FC_FLAGS +=-fallow-argument-mismatch
+endif
+
+CCFLAGS=-O3 -DLITTLE
+#CCFLAGS=-O0 -DLITTLE
+FPP=-cpp 
+endif 
+
+FCFLAGS=$(FC_FLAGS)
+
+## Define fancy Make  ###
+ifndef V
+
+	VERBOSE_CC = @printf '%b ' $(BOLD_BLUE)$(CC)$(NO_COLOUR) \
+        	                   $(BOLD)$(CCFLAGS)$(NO_COLOUR) \
+                	           $(NO_COLOUR)$?$(NO_COLOUR)    \
+        	                   $(CYAN)"=="$(NO_COLOUR)       \
+        	                   $(GREEN) $@$ $(NO_COLOUR);   \
+		                    printf '\n'; 
+
+	VERBOSE_FC = @printf '%b ' $(BOLD_BLUE)$(FC)$(NO_COLOUR) \
+	                           $(BOLD)$(FCFLAGS)$(NO_COLOUR) \
+	                           $(NO_COLOUR)$?$(NO_COLOUR)    \
+	                           $(CYAN)"=="$(NO_COLOUR)       \
+	                           $(GREEN) $@$ $(NO_COLOUR);   \
+	                           printf '\n'; 
+endif
+
+
+# Compiler commands.
+INCLUDES   = -I$(UTILS_INCS) $(HDF5_INC) -I$(PAR_INCS)  $(FPP_DEFS)
+EXTRAFLAGSF =  $(INCLUDES)  $(PAR_DEFS) $(FCFLAGS) $(FPP)
+EXTRAFLAGSC = $(INCLUDES) $(PAR_DEFS) $(CCFLAGS)  -D$(CMACH) 
+F_COMMAND  =$(VERBOSE_FC) $(FC) -c 
+C_COMMAND  =$(VERBOSE_CC) $(CC) -c 
+
+# Define objects.
+include objects_utils.mk
+
+# Define targets.
+all:  $(LIBUTILS)
+	@echo ""
+	@echo Finished building === $(LIBUTILS)
+	@echo ""
+
+$(LIBUTILS): $(OBJ_UTILS)
+	$(ARCHIVE) $(LIBUTILS) $(OBJ_UTILS)
+
+clean:
+	@echo ""
+	rm -f $(LIBUTILS) $(OBJ_UTILS) $(MOD_UTILS)
+	@echo ""
+      
+# Define dependencies and rules
+include depend_utils.mk
+
+.PHONY: all
+

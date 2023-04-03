@@ -1,0 +1,37 @@
+>* objects_model.mk - Incluído o mem_jules e sfclyr_jules
+
+>* depend_model.mk - Incluído o mem_jules e sfclyr_jules
+
+>* paths.mk - Incluir a variável JULES_VERSION e JULES
+
+>* Make_model - Alterar a variavel EXE e LIBMODEL
+
+>* include.mk.opt.pgi-cray - Incluir a chamada do módulo JULES e netcdf
+
+>* rad_driv.f90 - OK - Deixando o JULES calcular o rlongup e o albedt
+
+>* rad_ccmp.f90 - OK - Limitando o valor de SC para não dar NAN
+
+>* leaf_coms.f90 - OK - Incluído as variáveis alfa_vG,PHIsat,Wwilt
+
+>* sib2_co2.f90 - OK - Incluído a variável alfa_vG
+
+>* rdint.f90 - OK - Várias alterações 
+
+>* rtimh.f90 - OK - Incluído a opção para o JULES 
+
+>* mem_jules.f90 -  Foi criado este módulo para fazer o output das variáveis u10mj, v10mj, t2mj e rv2mj
+
+>* rams_mem_alloc.f90 - Alocando as variáveis do JULES
+
+>* alloc.f90 - deallocate JULES
+
+>* ModPostOneFieldUtils.f90, ModPostOneField.f90 e ModPostUtils.f90 - Para incluir as variáveis do JULES no pós-processamento.
+
+>* rams_master.f90 - Incluir a chamada da subrotina sfcdata também quando isfcl=5
+
+>* copiar o módulo ./src/brams/jules
+
+>* copiar o fonte ./src/brams/surface/mem_jules.f90
+
+>* intel compiler now works

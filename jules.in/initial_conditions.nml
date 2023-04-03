@@ -1,0 +1,10 @@
+&jules_initial
+const_val=0.0,300.0,10.0,0.0,0.35,303.0, 
+dump_file=.true.,  ! Nao utilizado  - Segue o RUNTYPE do RAMSIN
+file='./data/2initial_conditions.dat',  ! Nao utilizado - lendo o dump escrito (se HISTORY) ou fornecido pelo BRAMS (se INITIAL)
+nvars=6,  
+total_snow=.true.,
+use_file=.false.,.true.,2*.false.,.true.,.true.
+var='canopy','tstar_tile','cs','snow_tile','sthuf','t_soil','rho_snow','snow_depth','snow_grnd','frac','b','sathh','satcon','sm_sat','sm_crit','sm_wilt','hcap','hcon','albsoil','frac_agr','co2_mmr'
+var_name='',
+/

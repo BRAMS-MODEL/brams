@@ -1,0 +1,29 @@
+*******************************************************************************
+**************************** ModuleLeaders.txt ********************************
+*******************************************************************************
+The purpose of this page is to list leadership of the major components of JULES.
+Please note the following considerations:
+ * Leadership is not a commitment for the individual(s) to undertake all work
+   requested or all reviewing for the owned code section
+ * Any planned changes to a section should be discussed with the module leader
+   to ensure plans are appropriate
+ * Module leaders should be given the option to be a science/technical reviewer
+   for any code changes that alter their code sections
+ * The interface between components needs to be agreed by all affected parties.
+ * When passing on module leadership, leaders should ensure that this page is
+   updated appropriately.
+ * Rose meta-data (in rose-meta) will be owned by the appropriate module leader
+
+******************************** Module Leaders *******************************
+Surface                          John Edwards and Richard Essery 
+Hydrology                        Anne Verhoef and Nic Gedney
+Vegetation                       Anna Harper and Lina Mercado
+Veg3 RED Demography              Andy Wiltshire and Arthur Argles
+Biogeochemistry                  Eleanor Burke and Sarah Chadburn
+Biogenic fluxes                  Oliver Wild and Gerd Folberth
+Evaluation                       Tristan Quaife and Graham Weedon
+CABLE Science                    Claire Carouge
+Technical                        UM System Development Team
+OpenMP                           HPC Optimisation Team
+IMOGEN                           Chris Huntingford and Eleanor Burke
+Rose test suite (rose-stem)      Steve Wardle

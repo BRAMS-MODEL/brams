@@ -1,0 +1,41 @@
+$ARGS_INPUT
+
+!!!!! DATE !!!!!
+
+init_year  = 2020,
+init_month = 09,
+init_day   = 14,
+init_hour  = 0,
+final_year = 2020,
+final_month= 09,
+final_day = 15,
+final_hour = 00,
+
+!!!!! TIME STEP !!!!!!!
+
+step  = 6, !Timestep in hours
+
+!!!!! ATMOS !!!!!
+atmos_type   = 6, !0=DP, 1=GFS Grib2, 2=ERA5
+atmos_prefix ='gfs.t00z.pgrb2.0p25.f',
+atmos_sufix  ='.2020091400.grib2',
+atmos_idir   ='/lustre_xc50/ioper/data/external/2020091400/dataout/GFS_0p25/',
+levels = 23,
+initial_latitude = -70., !initial latitude for domain of model (-90 to 90)  
+final_latitude  = 20., !final latitude for domain of model(-90 to 90)
+initial_longitude = 250., !initial longitude for domain of model (0 to 360)
+final_longitude = 358., !Final longitude for domain of model (0 to 360)
+
+!!!!! CHEM !!!!!! 
+chem_type     = 1, !0 = no Chem, 1 = CAMS 
+chem_idir  = "/lustre_xc50/luiz_flavio/cams/",
+chem1_prefix ='',
+chem1_sufix  ='-CAMS-EC-2010-2019-AMS',
+
+!!!!! OUTPUT !!!!!
+out_type   = 2, !0=text, 1=VFM, 2=Grads
+out_prefix = 'IC',
+out_sufix  = '',
+out_dir    = '/lustre_xc50/luiz_flavio/bin/datain/GRADS/',
+	
+$END

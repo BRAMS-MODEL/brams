@@ -1,0 +1,6 @@
+USE:
+
+ WT_NUDGE_PI = 1.,         ! Anal nudging weight for pi
+ 
+ 
+ TOPTWVL  = -4.,-2.,2.,2.,   ! Topo wavelength cutoff in filter 

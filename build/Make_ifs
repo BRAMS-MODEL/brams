@@ -1,0 +1,97 @@
+include paths.mk
+
+DSRC=${IFS_DIR}/SOURCES_ifs_40r1
+F_COMP=/opt/pgi/osx86-64/12.6/bin/pgf90
+F_OPTS= -O0 -Mbounds -traceback #-m64 -staticlib #-fcheck=bounds  -fbacktrace #-r8 #-Mnosecond_underscore#-CB -traceback#  -fastsse -Mlarge_arrays# -tp amd64 #-Mbounds #-Minfo
+LOADER=/opt/pgi/osx86-64/12.6/bin/pgf90
+LOADER_OPTS=-v  #-Mbounds -traceback #-Mlarge_arrays
+ARCHIVE=ar rv
+
+#LIBS =	-L/Users/saulofreitas/localbin/libs/intel/netcdf/lib -lnetcdf
+LIBS =	
+
+# Compiler commands.
+
+F_COMMAND = $(F_COMP) -c $(F_OPTS) $(INCLUDES)
+
+# Define archive and executable names.
+
+BASE=ifs
+EXE=$(BASE)
+ARC=$(BASE).a
+
+# Define source.
+
+
+F_SRC=  $(DSRC)/parkind1.F90 \
+$(DSRC)/yomcst.F90 \
+$(DSRC)/yomdim.F90 \
+$(DSRC)/yoecldp.F90 \
+$(DSRC)/yoecumf.F90 \
+$(DSRC)/yoephy.F90 \
+$(DSRC)/yoephli.F90 \
+$(DSRC)/yoerad.F90 \
+$(DSRC)/yoethf.F90 \
+$(DSRC)/yoevdf.F90 \
+$(DSRC)/yoevdfs.F90 \
+$(DSRC)/yomrip.F90 \
+$(DSRC)/yomhook.F90 \
+$(DSRC)/yomjfh.F90 \
+$(DSRC)/sucldp.F90 \
+$(DSRC)/sucst.F90 \
+$(DSRC)/sucumf.F90 \
+$(DSRC)/su_yoethf.F90 \
+$(DSRC)/suphli.F90 \
+$(DSRC)/suvdf.F90 \
+$(DSRC)/suvdfs.F90 \
+$(DSRC)/satur.F90 \
+$(DSRC)/cuancape2.F90 \
+$(DSRC)/cuancape2_offl.F90 \
+$(DSRC)/cuadjtq.F90 \
+$(DSRC)/cuadjtqs.F90 \
+$(DSRC)/cuascn.F90 \
+$(DSRC)/cubasen.F90 \
+$(DSRC)/cubasmcn.F90 \
+$(DSRC)/cuddrafn.F90 \
+$(DSRC)/cudlfsn.F90 \
+$(DSRC)/cudtdqn.F90 \
+$(DSRC)/cududv.F90 \
+$(DSRC)/cuentr.F90 \
+$(DSRC)/cuflxn.F90 \
+$(DSRC)/cuinin.F90 \
+$(DSRC)/cumastrn.F90 \
+$(DSRC)/cuctracer.F90 \
+$(DSRC)/cuctracertl.F90 \
+$(DSRC)/cuctracerad.F90 \
+$(DSRC)/cubidiag.F90 \
+$(DSRC)/cubidiagtl.F90 \
+$(DSRC)/cubidiagad.F90 \
+$(DSRC)/vexp.F90 \
+$(DSRC)/vdiv.F90 \
+$(DSRC)/vrec.F90 \
+$(DSRC)/../testgate_ifs_40r1.F90 
+
+
+
+# Define targets.
+
+all: $(EXE)
+
+$(EXE): $(ARC) 
+	$(LOADER) -o $(EXE) $(LOADER_OPTS) $(ARC) $(LIBS)
+###	ln -fs $(EXE) $(BASE)
+###	rm -f r*.o
+
+$(ARC): $(F_SRC)
+	$(F_COMMAND) $(?)
+	$(ARCHIVE) $(ARC) *.o *.mod
+#	$(F_COMMAND) $(DSRC)/main.f90
+#	rm -f *.o
+
+
+install:
+	ln -fs $(pwd)/$(EXE) ../$(BASE)
+#	ln -fs `pwd`/$(EXE) ../test/$(BASE)
+
+clean:
+	rm -f $(ARC) $(EXE) $(BASE) *.o  ___* core* *.mod

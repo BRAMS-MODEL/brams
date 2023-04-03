@@ -1,0 +1,9 @@
+$jules_deposition
+!!dry_dep_model=1
+!!dzl_const=20.0
+l_deposition=.false.
+!!l_deposition_flux=.false.
+!!l_ukca_ddep_lev1=.false.
+!!ndry_dep_species=1
+!!tundra_s_limit=60.0
+$END

@@ -1,0 +1,115 @@
+#! /usr/bin/env bash
+
+#############################################################
+# This script updates the JULES test apps in a working copy
+#
+# If a version is given, it attempts to find an upgrade
+# path for each job with that name
+#
+# If no version is given, it just ensures consistency with
+# the HEAD metadata
+#############################################################
+
+# Turn on nullglob just while we construct this array, so that the
+# expansions expand to nothing if there are no apps, rather than 
+# literals
+shopt -s nullglob
+APPS=( rose-stem/app/*  benchmark/app/* )
+shopt -u nullglob
+
+# Check if a version to upgrade to was given
+version=
+if [[ $# -ge 1 ]]; then
+    version=$1
+fi
+
+
+# Verify we are in a JULES working copy directory (i.e. we have
+# some apps to upgrade
+if [[ ${#APPS[@]} -le 0 ]]; then
+    echo "Must be run in a JULES working copy directory"
+    exit 1
+fi
+
+
+function check_fail {
+    # The first argument contains an exit status
+    # If it is not zero, print the error message and exit
+    if [[ $1 -ne 0 ]]; then
+        echo "[FAIL] $2"
+        exit 1
+    fi
+}
+
+
+function get_version {
+    # The app should be the only argument
+    meta=`rose config --file=$1/rose-app.conf meta`
+    echo ${meta##*/}
+}
+
+
+function set_version {
+    # The app should be the first argument and the version the second
+    sed -i -r "s~meta=([^/]+)/.+$~meta=\1/$2~g" $1/rose-app.conf
+}
+
+
+echo "[INFO] Checking HEAD metadata for consistency"
+rose metadata-check -C rose-meta/jules-fcm-make/HEAD
+check_fail $? "jules-fcm-make HEAD metadata is invalid"
+rose metadata-check -C rose-meta/jules-standalone/HEAD
+check_fail $? "jules-standalone HEAD metadata is invalid"
+
+# Upgrade the apps
+for app in "${APPS[@]}"; do
+    if [[ $app == *fcm_make* ]]; then
+        echo "[INFO] Upgrading FCM make app in $app"
+    else
+        echo "[INFO] Upgrading JULES app in $app"
+    fi
+    
+    # If a version was given, check if we need to upgrade
+    if [ -n "$version" ]; then
+        from=$(get_version $app)
+        if [[ "$from" == "$version" ]]; then
+            # If the app is already at the requested version, there is nothing to do
+            echo "[INFO]     App already at $version"
+        else
+            # Otherwise, we must see if an upgrade is possible
+
+            # Without a version, rose app-upgrade prints the available versions
+            rose app-upgrade -a -M rose-meta -C $app | grep "${version}$" > /dev/null 2>&1
+            # If there is an upgrade macro, apply it
+            if [[ $? -eq 0 ]]; then
+                echo "[INFO]     Upgrading app to $version"
+                rose app-upgrade -a -y -q -M rose-meta -C $app $version
+                check_fail $? "Upgrade failed for $app"
+            else
+                echo "[INFO]     No upgrade macro for $version"
+            fi
+        fi
+    fi
+    
+    # Remove any 'trigger ignores' from variables in FCM make apps
+    # We have to do this because the FCM make apps in the rose stem suites have
+    # a special structure controlled by environment variables that means the
+    # trigger-ignoring is incorrect
+    if [[ $app == *fcm_make* ]]; then
+        sed -i -r "s~^!!~~g" $app/rose-app.conf
+    fi
+    
+    # Force the JULES apps to be consistent with the HEAD metadata
+    # We do this by changing the meta version to HEAD temporarily
+    if [[ $app != *fcm_make* ]]; then
+        echo "[INFO]     Ensuring consistency with HEAD metadata"
+        current=$(get_version $app)
+        set_version $app HEAD
+        rose macro --fix -y -q -M rose-meta -C $app
+        check_fail $? "Unable to force consistency with HEAD metadata for $app"
+        set_version $app $current
+    fi
+done
+
+echo "[DONE] All apps upgraded"
+

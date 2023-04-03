@@ -1,0 +1,304 @@
+! *****************************COPYRIGHT**************************************
+! (C) Crown copyright Met Office. All rights reserved.
+! For further details please refer to the file COPYRIGHT.txt
+! which you should have received as part of this distribution.
+! *****************************COPYRIGHT**************************************
+
+
+!DSM PROGRAM jules
+
+SUBROUTINE jules_subroutine(nml_dir,fase) !DSM
+
+!$ USE omp_lib, ONLY: omp_get_max_threads
+
+USE init_mod, ONLY: init
+
+USE io_constants, ONLY: max_file_name_len
+
+USE jules_final_mod, ONLY:                                                    &
+!  imported procedures
+    jules_final
+
+USE time_varying_input_mod, ONLY:                                             &
+  update_prescribed_variables => update_model_variables,                      &
+  input_close_all => close_all
+
+USE update_mod, ONLY: update_derived_variables
+
+USE output_mod, ONLY: output_initial_data, sample_data, output_data,          &
+                       output_close_all => close_all,                         &
+                       output_dir, run_id  !DSM
+
+USE model_time_mod, ONLY: timestep, start_of_year, end_of_year, end_of_run
+
+USE update_mod, ONLY: l_imogen
+
+USE jules_print_mgr, ONLY: jules_message, jules_print
+
+USE forcing, ONLY:                                                            &
+  con_rain_ij, con_snow_ij, ls_rain_ij, ls_snow_ij, sw_down_ij, lw_down_ij,   &
+  pstar_ij, qw_1_ij, tl_1_ij, u_0_ij, u_1_ij, v_0_ij, v_1_ij
+
+USE gridmean_fluxes, ONLY:                                                    &
+  fqw_1_ij, ftl_1_ij, taux_1_ij, tauy_1_ij
+
+!TYPE definitions
+USE jules_fields_mod, ONLY: crop_vars_data, crop_vars,                        &
+                            psparms_data, psparms,                            &
+                            top_pdm_data, toppdm,                             &
+                            fire_vars_data, fire_vars,                        &
+                            ainfo_data, ainfo,                                &
+                            fire_vars_data, fire_vars,                        &
+                            trif_vars_data, trif_vars,                        &
+                            soil_ecosse_vars_data, soilecosse,                &
+                            aero_data, aerotype,                              &
+                            urban_param_data, urban_param,                    &
+                            progs_data, progs,                                &
+                            top_pdm_data, toppdm,                             &
+                            trifctl_data, trifctltype,                        &
+                            coastal_data, coast,                              &
+                            jules_vars_data, jules_vars
+
+!DSM {
+USE netcdf, ONLY: nf90_redef,nf90_nowrite, nf90_write, nf90_open, nf90_put_att,nf90_real,nf90_int
+!DSM}
+
+IMPLICIT NONE
+
+!-----------------------------------------------------------------------------
+! Description:
+!   This is the main program routine for JULES
+!
+! Code Owner: Please refer to ModuleLeaders.txt
+! This file belongs in TECHNICAL
+!
+! Code Description:
+!   Language: Fortran 90.
+!   This code is written to JULES coding standards v1.
+!-----------------------------------------------------------------------------
+! Work variables
+CHARACTER(LEN=max_file_name_len) :: nml_dir  ! Directory containing namelists
+
+INTEGER :: error, fase  ! Error indicator
+
+!DSM {
+integer, parameter :: ndims = 1
+INTEGER  :: i,STATUS, ncid, var_id,nxNC,nyNC,pftNC,nlev,soilNC,typeNC,var_idx,var_idy,var_idz, &
+                     x_dimid,y_dimid,z_dimid,dimids(ndims)
+CHARACTER (len=130) :: file_name 
+   INTEGER :: nf_INQ_DIMLEN,nf_inq_varid,nf_get_var,nf_close &
+             ,nf_def_var,nf_enddef,nf_put_var, nf_INQ_DIMID
+REAL, ALLOCATABLE :: glat(:,:),glon(:,:)
+INTEGER, ALLOCATABLE :: z(:)
+CHARACTER (len=4) :: plot_lev
+
+!DSM}
+
+!-----------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------
+! Initialise the MPI environment
+!-----------------------------------------------------------------------------
+! We don't check the error since most (all?) MPI implementations will just
+! fail if a call is unsuccessful
+!DSM CALL mpi_init(error)
+
+!-----------------------------------------------------------------------------
+! If OpenMP is in use provide an information message to make sure the
+! user is aware.
+!-----------------------------------------------------------------------------
+!$ WRITE(jules_message, '(A, I3, A)') 'Using OpenMP with up to ', &
+!$                                        OMP_get_max_threads(), ' thread(s)'
+!$ CALL jules_print('jules', jules_message)
+
+!-----------------------------------------------------------------------------
+! Try to read a single argument from the command line
+!
+! If present, that single argument will be the directory we try to read
+! namelists from
+! If not present, we use current working directory instead
+!-----------------------------------------------------------------------------
+!DSM CALL get_command_argument(1, nml_dir)
+! If no argument is given, GET_COMMAND_ARGUMENT returns a blank string
+IF ( LEN_TRIM(nml_dir) == 0 ) nml_dir = "."
+
+!-----------------------------------------------------------------------------
+! Initialise the model
+!-----------------------------------------------------------------------------
+
+IF (fase<=2) THEN
+CALL init(fase,nml_dir, crop_vars_data, crop_vars,                                 &
+                   psparms_data, psparms,                                     &
+                   toppdm, top_pdm_data,                                      &
+                   fire_vars, fire_vars_data,                                 &
+                   ainfo, ainfo_data,                                         &
+                   trif_vars, trif_vars_data,                                 &
+                   soilecosse, soil_ecosse_vars_data,                         &
+                   aero_data, aerotype,                                       &
+                   urban_param, urban_param_data,                             &
+                   progs, progs_data,                                         &
+                   trifctl_data, trifctltype,                                 &
+                   coastal_data, coast,                                       &
+                   jules_vars_data, jules_vars)
+
+! na fase1 le os namelists, nas fase2 completa a inicializacao do JULES
+RETURN  !DSM - retorna, pois o modelo vai rodar na fase3
+ENDIF
+
+!DSM !-----------------------------------------------------------------------------
+!DSM ! Loop over timesteps.
+!DSM ! Note that the number of timesteps is of unknown length at the start of run,
+!DSM ! if the model is to determine when it has spun up.
+!DSM !-----------------------------------------------------------------------------
+!DSM DO    !  timestep  - O loop eh o BRAMS que faz
+
+IF (fase == 3) THEN  !executa para cada timestep do BRAMS 
+  !-----------------------------------------------------------------------------
+  ! Update the IMOGEN climate variables if required
+  !-----------------------------------------------------------------------------
+  IF ( l_imogen .AND. start_of_year ) CALL imogen_update_clim(progs)
+
+  !-----------------------------------------------------------------------------
+  ! The update of prescribed data is done in two phases
+  !  - Update variables provided by files
+  !  - Update variables that are derived from those updated in the first phase
+  !-----------------------------------------------------------------------------
+  CALL update_prescribed_variables()
+  CALL update_derived_variables(crop_vars,psparms,ainfo,urban_param,progs,    &
+                                jules_vars)
+
+  !-----------------------------------------------------------------------------
+  ! Check if this is a timestep that we need to output initial data for (i.e.
+  ! start of spinup cycle or start of main run), and output that data if
+  ! required
+  !-----------------------------------------------------------------------------
+  CALL output_initial_data()
+
+  !-----------------------------------------------------------------------------
+  ! Call the main model science routine
+  !-----------------------------------------------------------------------------
+  CALL control(                                                               &
+  !   Scalar arguments (INTENT IN)
+      timestep,                                                               &
+  !   Atmospheric forcing (INTENT IN)
+      qw_1_ij, tl_1_ij, u_0_ij, v_0_ij, u_1_ij, v_1_ij, pstar_ij,             &
+      ls_rain_ij, con_rain_ij, ls_snow_ij, con_snow_ij, sw_down_ij,           &
+      lw_down_ij,                                                             &
+  !   Gridbox mean surface fluxes (INTENT OUT)
+      fqw_1_ij, ftl_1_ij, taux_1_ij, tauy_1_ij,                               &
+      !TYPES containing field data (IN OUT)
+      crop_vars,psparms,toppdm,fire_vars,ainfo,trif_vars,soilecosse, aerotype,&
+      urban_param,progs,trifctltype, coast, jules_vars                        &
+      )
+
+  !-----------------------------------------------------------------------------
+  ! Update IMOGEN carbon if required
+  !-----------------------------------------------------------------------------
+  IF ( l_imogen .AND. end_of_year ) CALL imogen_update_carb(progs)
+
+  !-----------------------------------------------------------------------------
+  ! Sample variables for output
+  !-----------------------------------------------------------------------------
+  CALL sample_data()
+
+  !-----------------------------------------------------------------------------
+  ! Output collected data if required
+  !-----------------------------------------------------------------------------
+  CALL output_data()
+
+  !-----------------------------------------------------------------------------
+  ! Move the model on to the next timestep
+  !-----------------------------------------------------------------------------
+  CALL next_time(progs)
+
+  !DSM IF ( end_of_run ) EXIT
+
+ENDIF   !DSM
+!DSM END DO  !  timestep loop
+
+IF (fase == 4) THEN  !DSM executa somente apos o ultimo timestep do BRAMS - para fechar o JULES 
+   !-----------------------------------------------------------------------------
+   ! Clean up by closing all open files
+   !-----------------------------------------------------------------------------
+   CALL input_close_all()
+   CALL output_close_all()
+
+   !-----------------------------------------------------------------------------
+   ! Final messages.
+   !-----------------------------------------------------------------------------
+   CALL jules_final()
+
+   !-----------------------------------------------------------------------------
+   ! Clean up the MPI environment
+   !-----------------------------------------------------------------------------
+   !DSM CALL mpi_finalize(error)
+   
+   !DSM --- Escrevendo grid no output para ser aberto pelo GrADS ---{
+      plot_lev='pft ' !no GrADS vai aparecer as variaveis de superficie e em nivies pft: tstar_gb, u10m, fsmc, gpp, lai, ...
+      !plot_lev='soil' !no GrADS vai aparecer as variaveis de superficie e em nivies soilt: tstar_gb, u10m, t_soil, smcl, ...
+      !plot_lev='type' !no GrADS vai aparecer as variaveis de superficie e em nivies type: tstar_gb, u10m,..., frac e tile_index
+      
+      file_name=trim(output_dir)//'/'//trim(run_id)//'.tstep.nc'
+      STATUS = nf90_open(TRIM(file_name), NF90_NOWRITE, ncid); if (STATUS/=0) print*,'nf90_open:',STATUS
+      STATUS = nf_INQ_DIMLEN(ncid, 1, nxNC); if (STATUS/=0) print*,'nf_INQ_DIMLEN-nx:',STATUS
+      STATUS = nf_INQ_DIMLEN(ncid, 2, nyNC); if (STATUS/=0) print*,'nf_INQ_DIMLEN-ny:',STATUS
+      STATUS = nf_INQ_DIMLEN(ncid, 3, pftNC); if (STATUS/=0) print*,'nf_INQ_DIMLEN-ny:',STATUS
+      STATUS = nf_INQ_DIMLEN(ncid, 4, soilNC); if (STATUS/=0) print*,'nf_INQ_DIMLEN-ny:',STATUS
+      STATUS = nf_INQ_DIMLEN(ncid, 5, typeNC); if (STATUS/=0) print*,'nf_INQ_DIMLEN-ny:',STATUS
+      !print*,nxNC,nyNC,pftNC,soilNC,typeNC
+      ALLOCATE (glat(nxNC,nyNC), glon(nxNC,nyNC))
+      STATUS = nf_inq_varid(ncid, 'latitude', var_id) ; if (STATUS/=0) print*,'nf_inq_varid-vt2:',STATUS
+      STATUS = nf_get_var(ncid, var_id, glat) ; if (STATUS/=0) print*,'nf_get_var:',STATUS
+      STATUS = nf_inq_varid(ncid, 'longitude', var_id) ; if (STATUS/=0) print*,'nf_inq_varid-vt2:',STATUS
+      STATUS = nf_get_var(ncid, var_id, glon) ; if (STATUS/=0) print*,'nf_get_var:',STATUS
+      STATUS = nf_close(ncid); if (STATUS/=0) print*,'nf_close:',STATUS
+
+      STATUS = nf90_open(TRIM(file_name), NF90_WRITE, ncid); if (STATUS/=0) print*,'nf90_open:',STATUS
+      STATUS = nf90_redef(ncid); if (STATUS/=0) print*,'nf90_redef:',STATUS
+
+      !--- Incluindo dimensoes para o eixo X (longitude) ---
+      STATUS = nf_INQ_DIMID(ncid, 'x', x_dimid); if (STATUS/=0) print*,'nf_INQ_DIMID-x:',STATUS
+      dimids = (/ x_dimid /)
+      STATUS = nf_def_var(ncid,'x', NF90_REAL, ndims,dimids, var_idx); if (STATUS/=0) print*,'nf_def_var-x:',STATUS
+      STATUS = nf90_put_att(ncid, var_idx, "axis", "X"); if (STATUS/=0) print*,'nf90_put_att-units:',STATUS
+
+      !--- Incluindo dimensoes para o eixo Y (latitude) ---
+      STATUS = nf_INQ_DIMID(ncid, 'y', y_dimid); if (STATUS/=0) print*,'nf_INQ_DIMID-y:',STATUS
+      dimids = (/ y_dimid /)
+      STATUS = nf_def_var(ncid,'y', NF90_REAL, ndims,dimids, var_idy); if (STATUS/=0) print*,'nf_def_var-y:',STATUS
+      STATUS = nf90_put_att(ncid, var_idy, "axis", "Y"); if (STATUS/=0) print*,'nf90_put_att-units:',STATUS
+
+      !--- Incluindo dimensoes para o eixo Z (dependendo da escolha do plot_lev) ---
+      STATUS = nf_INQ_DIMID(ncid, plot_lev, z_dimid); if (STATUS/=0) print*,'nf_INQ_DIMID-z:',STATUS
+      dimids = (/ z_dimid /)
+      STATUS = nf_def_var(ncid,plot_lev, NF90_INT, ndims,dimids, var_idz); if (STATUS/=0) print*,'nf_def_var-y:',STATUS
+      STATUS = nf90_put_att(ncid, var_idz, "axis", "Z"); if (STATUS/=0) print*,'nf90_put_att-units:',STATUS
+      
+      nlev=1
+      IF (plot_lev(1:3)/='pft') nlev=pftNC
+      IF (plot_lev(1:3)/='soi') nlev=soilNC
+      IF (plot_lev(1:3)/='typ') nlev=typeNC
+
+      ALLOCATE(z(nlev))
+      z=(/(i,i=1,nlev)/)
+
+      STATUS = nf_enddef(ncid); if (STATUS/=0) print*, 'nf_enddef=',STATUS
+!print*,glon
+!print*,'sdff'
+!print*,glon(:,1)
+!print*,'aaaa'
+
+      STATUS = nf_put_var(ncid,var_idx,glon(:,1)); if (STATUS/=0) print*,'nf_put_var-lon:',STATUS
+      STATUS = nf_put_var(ncid,var_idy,glat(1,:)); if (STATUS/=0) print*,'nf_put_var-lat:',STATUS
+      IF (plot_lev(1:3)/='SUP') STATUS = nf_put_var(ncid,var_idz,z(:)); if (STATUS/=0) print*,'nf_put_var-lat:',STATUS
+      
+      STATUS = nf_close(ncid); if (STATUS/=0) print*,'nf_close:',STATUS
+ 
+   !DSM}
+
+   
+ENDIF !DSM
+
+END SUBROUTINE jules_subroutine !DSM
+!DSM END PROGRAM jules

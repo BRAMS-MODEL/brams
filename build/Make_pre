@@ -1,0 +1,57 @@
+include paths.mk
+
+PRE = pre
+
+OBJS=         \
+pre.o \
+filesMod.o \
+memoryMod.o \
+chemMod.o \
+engineMod.o \
+utilsMod.o \
+chem1_list.o \
+dump.o
+
+WGRIB_LIB  =-L$(WGRIBDIR)/lib -lwgrib2_api -lwgrib2 
+
+all: $(PRE)
+
+$(PRE): $(OBJS) $(WGRIBDIR)
+	$(FC_LOADER) -o $(PRE) $(OBJS) $(WGRIB_LIB) $(NETCDFF_LIB) $(NETCDFC_LIB) #-nostartfiles
+
+clean:
+	rm -f $(PRE) $(OBJS) *.mod
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+.f90.o:
+	$(F_COMMAND) -c $<
+
+pre.o : $(PRE-BRAMS)/pre.f90 utilsMod.o dump.o filesMod.o \
+	chemMod.o memoryMod.o engineMod.o
+	cp -f $< $(<F:.f90=.f90)
+	$(F_COMMAND) $(<F:.f90=.f90) -I$(UTILS_INCS) $(FC_FLAGS)
+	rm -f $(<F:.f90=.f90)
+
+filesMod.o : $(PRE-BRAMS)/filesMod.f90 memoryMod.o chemMod.o\
+	utilsMod.o dump.o
+	@echo $(PRE-BRAMS)
+	cp -f $< $(<F:.f90=.f90)
+	$(F_COMMAND) $(<F:.f90=.f90) -I$(UTILS_INCS) $(FC_FLAGS)
+	rm -f $(<F:.f90=.f90)
+
+memoryMod.o : $(PRE-BRAMS)/memoryMod.f90 dump.o
+	cp -f $< $(<F:.f90=.f90)
+	$(F_COMMAND) $(<F:.f90=.f90) -I$(UTILS_INCS) $(FC_FLAGS)
+	rm -f $(<F:.f90=.f90)
+
+chemMod.o : $(PRE-BRAMS)/chemMod.f90 chem1_list.o memoryMod.o \
+	dump.o
+	cp -f $< $(<F:.f90=.f90)
+	$(F_COMMAND) $(<F:.f90=.f90) -I$(UTILS_INCS) $(FC_FLAGS)
+	rm -f $(<F:.f90=.f90)
+
+engineMod.o : $(PRE-BRAMS)/engineMod.f90 dump.o
+	cp -f $< $(<F:.f90=.f90)
+	$(F_COMMAND) $(<F:.f90=.f90) -I$(UTILS_INCS) $(FC_FLAGS)
+	rm -f $(<F:.f90=.f90)

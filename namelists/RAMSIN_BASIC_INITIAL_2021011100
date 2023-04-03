@@ -1,0 +1,304 @@
+$MODEL_ADV_RAMSIN    
+    ADVANCED_RAMSIN = 'RAMSIN_ADVANCED_INITIAL_2021011100', !The RAMSIN continuation
+$END
+
+ $MODEL_GRIDS
+
+   EXPNME   = 'BRAMS-8km-IAU0-IAU0',
+
+   RUNTYPE  = 'INITIAL',    ! Type of run: MAKESFC, INITIAL, HISTORY,
+                            !              MAKEVFILE, or MEMORY
+
+   TIMEUNIT = 'h',          ! 'h','m','s' - Time units of TIMMAX, TIMSTR
+
+   TIMMAX   = 168,           ! Final time of simulation
+
+!  Start of simulation or ISAN processing
+
+   IMONTH1  =01,      ! Month
+   IDATE1   =11,     ! Day
+   IYEAR1   =2021,      ! Year
+   ITIME1   =0000,         ! GMT of model TIME = 0.
+
+! Grid specifications
+
+   NNXP     = 1017,         ! Number of x gridpoints
+   NNYP     = 993,      ! Number of y gridpoints
+   NNZP     = 45, 47,         ! Number of z gridpoints
+   NZG      = 5,	      ! Number of soil layers
+   NZS      = 1,	        ! Maximum number of snow layers
+ 
+
+! Coarse grid specifications
+
+   DELTAX   = 8000.,
+   DELTAY   = 8000.,       ! X and Y grid spacing
+
+   DELTAZ   = 70.0,   ! Z grid spacing (set to 0. to use ZZ)
+   DZRAT    = 1.09,   ! Vertical grid stretch ratio
+   DZMAX    = 750.,   ! Maximum delta Z for vertical stretch
+   FIXLEVELS = 0,
+
+   ZZ       =    0.0,  !Vertical levels if DELTAZ = 0  !#1
+     20.0,      46.0,      80.0,     120.0,     165.0, !# 02 to 06
+    220.0,     290.0,     380.0,     480.0,     590.0, !# 07 to 11
+    720.0,     870.0,    1030.0,    1200.0,    1380.0, !# 12 to 16
+   1595.0,    1850.0,    2120.0,    2410.0,    2715.0, !# 17 to 21
+   3030.0,    3400.0,    3840.0,    4380.0,    5020.0, !# 22 to 26
+   5800.0,    6730.0,    7700.0,    8700.0,    9700.0, !# 27 to 31
+  10700.0,   11700.0,   12700.0,   13700.0,   14700.0, !# 32 to 36 
+  15700.0,   16700.0,   17700.0,   18700.0,   19700.0, !# 37 to 41
+  20500.0,   22000.0,   23500.0,   25000.0,            !# 42 to 45
+ 
+   DTLONG   = 45., 	   ! Coarse grid long timestep
+
+   POLELAT  = -19.0,         ! Latitude of pole point
+   POLELON  = -56.0,         ! Longitude of pole point
+
+   CENTLAT  = -19.0, ! Latitude  of grid center point
+   CENTLON  = -56.0, ! Longitude of grid center point
+
+ $END
+
+$CCATT_INFO
+
+  CCATT = 0, ! 1-CCATT environmental model activated 0-off
+
+   CHEMISTRY = -1,  ! -1- only atmospheric model
+                   !  0- only tracer transport with atmos. model
+         !  1- activate the loss/production by kinetic chemical
+                   !    and photochemical reactions, with solver 1
+         !  2- activate the loss/production by kinetic chemical
+                   !     and photochemical reactions, with solver 2
+         !  3- Rosenbrock 2nd order - dynamic timestep
+         !  4- Rosenbrock "RODAS3" 3rd order - dynamic timestep
+   CHEM_TIMESTEP = 320., ! chemistry timestep integration (seconds)
+                         ! should be a multiple of dtlong
+
+   CHEM_ASSIM = 0, ! 1- activate 4dda with mocage data, 0 - off
+   
+   SRCMAPFN = 'NONE', ! Source Map file prefix ou "NONE" !caminho prepchem
+
+   AEROSOL = 0,    ! 1 -  aerosol model: on
+                   ! 0 -  aerosol model: off
+                   
+   AER_ASSIM = 0, ! 1- activate 4dda with mocage/cams data, 0 - off
+
+   AER_TIMESTEP = 45., ! aerosol time step integration (sec)
+                             ! should be an multiple of dtlong (max 4/try just 1X)    
+                             ! 0 - off, 1 - on 
+
+ $END
+
+$MODEL_FILE_INFO
+
+! Variable initialization input
+
+   INITIAL  = 2,             ! Initial fields - 1=horiz.homogeneous,
+
+   VARFPFX  = './2021011100/dataout/IVAR/OPQUE',      ! Varfile initialization file prefix
+   TNUDCENT = 0.,   ! Nudging time scale(s) in center of domain
+                    ! in the center. Typical values are 1-2 hours to reduce the shock
+   NUDLAT   = 40,            ! Number of points in lateral bnd region
+   TNUDLAT  = 3600.,         ! Nudging time scale(s) at lateral boundary
+   TNUDTOP  = 7200.,         ! Nudging time scale (s) at top of domain
+   ZNUDTOP  = 15000.,        ! Nudging at top of domain above height(m)
+
+! History/analysis file output
+ 
+   IPOS     =  2,                ! 0-no files, 2-grads files, 3 - NetCDF
+   IOUTPUT  =  0,                ! 0-no files, 1-save ASCII, 2-save binary
+   HFILOUT  = './2021011100/dataout/ANL/HOPQUE',      ! History file prefix
+   AFILOUT  = './2021011100/dataout/ANL/OPQUE',       ! Analysis file prefix
+   FRQHIS   = 2160000.,           ! History file frequency
+   FRQANL   = 10800.,            ! Analysis file frequency
+
+! Input topography variables
+
+   TOPFILES = './2021011100/dataout/SFC/top_OQ3g',  ! File path and prefix for topo files.
+   SFCFILES = './2021011100/dataout/SFC/sfc_OQ3g',   ! File path and prefix for surface
+   SSTFPFX  = './2021011100/dataout/SFC/sst_OQ3g',   ! Path and prefix for sst files
+   NDVIFPFX = './2021011100/dataout/SFC/ndv_OQ3g',  ! Path and prefix for ndvi files
+
+   ITOPTFN  = "./datafix/TOPO1KM/EL",
+   ISSTFN   = "./data/BRAMS/SST_WEEK/W",
+   IVEGTFN  = "./datafix/GL_OGE_INPE/OGE",
+   ISOILFN  = "./datafix/GL_FAO_INPE/FAO",
+   NDVIFN   = "./datafix/NDVI-MODIS_GRADS/N",
+
+ $END
+
+ $MODEL_OPTIONS
+
+! Radiation parameters
+
+   ISWRTYP  = 6,             ! Shortwave radiation type
+   ILWRTYP  = 6,             ! Longwave radiation type
+                             !    0-none, 2-Mahrer/Pielke, 1-Chen, 3-Harrington
+                             !    4- CARMA  5-UKMET 6-RRTMG
+   RADFRQ   = 1800.,          ! Freq. of radiation tendency update (s)
+
+! Cumulus parameterization parameters
+ 
+   NNQPARM  = 8,! Convective param. flag 
+                ! 0- off,
+                ! 1- Tremback formulation
+                ! 2- Grell-Deveny scheme
+                ! 3- Grell-3d formulation
+                ! 4- Grell-Deveny scheme as implemented in FIM/NOAA model                      
+                ! 5- Grell-Freitas scheme
+   
+   CLOSURE_TYPE = 'PB', ! Closure type (for Grell Param.):
+                        ! EN: ensemble (all closures)
+                        ! GR: Grell
+                        ! LO: low level omega
+                        ! MC: moisture convergence
+                        ! SC: like Fritsch Chappel or Kain Fritsch
+                        ! AS: Arakawa-Schubert
+
+   NNSHCU   = 3,   ! Shallow Cumulus Param. (0-off, 1-Souza scheme, 2-Grell-Deveny scheme)
+   CONFRQ   = 600.,      ! Frequency of conv param. updates (s)
+   SHCUFRQ  = 600.,      ! Frequency of Shallow param. updates (s)
+
+   ISFCL    = 5,             ! Surface layer/soil/veg model
+                             !  0-specified surface layer gradients
+                             !  1-soil/vegetation model  LEAF
+                             !  2-soil/vegetation model LEAF & hidrological model
+                             !  3-Reserved
+                             !  4-Reserved
+                             !  5-JULES
+
+   ISFCL_OCEAN = 1,
+
+   SOIL_MOIST_FAIL = 'l', ! In case of Heterogenous Soil Moist.
+                          ! file was not found, what to do?
+                          ! s => STOP the program
+                          ! h => Initialize with Homogenous Soil Moist.
+                          ! l => Looking for 5 days old files,
+                          ! and if not found again then stop.
+
+
+   USDATA_IN  = './my_external/2021011100/dataout/umid_solo/GFS.SOIL:UMID_TEMP.', !gl_sm.gpnr., GFS.SOIL:UMID_TEMP. ...,  ! Soil Moisture File prefix
+   USMODEL_IN = './2021011100/dataout/UMD/gl_sm_gpnr.', !gl_sm.gpnr.,GFS.SOIL:UMID_TEMP. ..., ! File prefix with pre-calculated data by BRAMS
+
+ ! Microphysics
+
+   MCPHYS_TYPE = 2,          ! microphysics formulation
+                             ! 0 = original brams
+                             ! 1 = 2M rams6.0
+   LEVEL   = 3,              ! Moisture complexity level
+
+$END
+
+$ISAN_CONTROL
+
+!-----------------------------------
+! Isentropic control
+!-----------------------------------
+
+   ISAN_INC = 0300,         ! ISAN processing increment (hhmm)
+                            !    range controlled by TIMMAX,
+                            !    IYEAR1,...,ITIME1
+! Input data file prefixes
+
+   IAPR    = './datain/DPCHEM/dp', ! Input press level dataset
+                                   ! Used in case ICFILETYPE=0
+
+! File names and dispose flags 
+
+   VARPFX    = './2021011100/dataout/IVAR/OPQUE',  ! isan file names prefix
+
+$END
+
+$ISAN_ISENTROPIC
+
+   !-----------------------------------
+   ! Makevfile information IC = Initial Conditions
+   !-----------------------------------
+
+   ICFILETYPE=4, !0- ISAN using dprep, 1- do ISAN using NCEP GFS GRIB2,
+                 !2- ISAN using netCDF 3-HDF5 4-GRADS From PRE-BRAMS
+
+   ICPREFIX = "./2021011100/datain/GRADS/IC",  !IC file prefix
+
+   WIND_U_VARNAME = "U",    !Name of U wind variable inside grib2 descriptions (m/s)
+
+   WIND_V_VARNAME = "V",    !Name of V wind variable inside grib2 descriptions (m/s)
+
+   TEMPERATURE_VARNAME = "T", !Name of temperature variable inside grib2 descriptions (k)
+
+   GEO_VARNAME = "Z", ! Name of geopotential variable inside grib2 descriptions (m)
+
+   UR_VARNAME = "R", ! Name of humidity variable inside grib2 descriptions (%)
+
+   INITIAL_LATITUDE = -70., !Initial latitude for domain of model (-90 to 90)
+
+   FINAL_LATITUDE  = 29., !Final latitude for domain of model(-90 to 90)
+
+   INITIAL_LONGITUDE = 250., !Initial longitude for domain of model (0 to 360)
+
+   FINAL_LONGITUDE = 358., !Final longitude for domain of model (0 to 360)
+
+   Z_MAX_LEVEL = 23, !Maximum number of levels to be processed
+
+   !              U  V  T  Z  R
+   SCALE_FACTOR = 1.,1.,1.,1.,0.01, !Factor to multiply each var
+
+$END
+
+  $POST
+
+    NVP = 25,
+
+    VP = 'precip',
+    'acccon',
+    'sea_press',
+    'sfc_press',
+    'press',
+    'ue_avg',
+    've_avg',
+    'u10mj',
+    'v10mj',
+    'td2mj',
+    't2mj',
+    't2mj_min',
+    't2mj_max',
+    'tempc',
+    'geo',
+    'smoist',
+    'sst',
+    'rh',
+    'rv',
+
+    'ref_tempc',
+    'ref_u',
+    'ref_v',
+    'ref_rv',
+    'u',
+    'v',
+
+
+    GPREFIX = './2021011100/dataout/POST/meteo',
+    CSVFILE = './variables.csv',
+    ANL2GRA = 'ONE',
+
+    PROJ='YES',
+    MEAN_TYPE ='BAV',
+    LATI = -90.,-90.,    -90., -90.,
+    LATF = +90.,+90.,    +90., +90.,
+    LONI = -180.,-180., -180.,-180.,
+    LONF =  180.,180.,   180., 180.,
+
+
+    ZLEVMAX = 32,32,32,32,
+
+    IPRESSLEV = 1,
+    INPLEVS = 25,
+    IPLEVS = 1000, 975, 950, 925, 900, 875, 850, 825, 800, 775, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300,
+250, 200, 150, 100, 50,
+    ASCII_DATA ='NO',
+    SITE_LAT =-10.76,
+    SITE_LON =-62.36,
+ $END
+
+

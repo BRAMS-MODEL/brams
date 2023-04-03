@@ -1,0 +1,179 @@
+module ModPostOneField
+
+  use ModBramsGrid, only: BramsGrid
+  use ModPostGrid, only: PostGrid
+
+  use ModPostOneFieldUtils, only: Brams2Post_u
+  use ModPostOneFieldUtils, only: Brams2Post_v
+  use ModPostOneFieldUtils, only: Brams2Post_tempk
+  use ModPostOneFieldUtils, only: Brams2Post_tveg
+  use ModPostOneFieldUtils, only: Brams2Post_totpcp
+  use ModPostOneFieldUtils, only: Brams2Post_acccon
+  use ModPostOneFieldUtils, only: Brams2Post_dewptc
+  use ModPostOneFieldUtils, only: Brams2Post_rshort
+  use ModPostOneFieldUtils, only: Brams2Post_rlong
+  use ModPostOneFieldUtils, only: Brams2Post_sea_press
+  use ModPostOneFieldUtils, only: Brams2Post_cape
+  use ModPostOneFieldUtils, only: Brams2Post_cine
+  use ModPostOneFieldUtils, only: Brams2Post_topo
+  use ModPostOneFieldUtils, only: Brams2Post_precip
+  use ModPostOneFieldUtils, only: Brams2Post_le
+  use ModPostOneFieldUtils, only: Brams2Post_h
+  use ModPostOneFieldUtils, only: Brams2Post_rv
+  use ModPostOneFieldUtils, only: Brams2Post_rlongup
+  use ModPostOneFieldUtils, only: Brams2Post_albedt
+  use ModPostOneFieldUtils, only: Brams2Post_geo
+  use ModPostOneFieldUtils, only: Brams2Post_ue_avg
+  use ModPostOneFieldUtils, only: Brams2Post_ve_avg
+  use ModPostOneFieldUtils, only: Brams2Post_tempc2m
+  use ModPostOneFieldUtils, only: Brams2Post_tempc
+  use ModPostOneFieldUtils, only: Brams2Post_rh
+  use ModPostOneFieldUtils, only: Brams2Post_w
+  use ModPostOneFieldUtils, only: Brams2Post_sst
+  use ModPostOneFieldUtils, only: Brams2Post_land
+  use ModPostOneFieldUtils, only: Brams2Post_smoist
+  use ModPostOneFieldUtils, only: Brams2Post_zi
+  use ModPostOneFieldUtils, only: Brams2Post_tke
+  use ModPostOneFieldUtils, only: Brams2Post_cloud
+  use ModPostOneFieldUtils, only: Brams2Post_omeg
+  use ModPostOneFieldUtils, only: Brams2Post_pwt
+  use ModPostOneFieldUtils, only: Brams2Post_slp_metar
+  use ModPostOneFieldUtils, only: Brams2Post_td2m 
+  use ModPostOneFieldUtils, only: Brams2Post_u10m
+  use ModPostOneFieldUtils, only: Brams2Post_v10m 
+   
+  implicit none
+
+  private
+  public :: PostOneField
+
+contains
+
+
+  subroutine PostOneField(varName, oneBramsGrid, onePostGrid)
+    character(len=*), intent(in) :: varName
+    type(BramsGrid), pointer :: oneBramsGrid
+    type(PostGrid), pointer :: onePostGrid
+
+    select case (varName)
+
+    case ('u')
+       call Brams2Post_u (varName, oneBramsGrid, onePostGrid)
+
+    case ('v')
+       call Brams2Post_v (varName, oneBramsGrid, onePostGrid)
+
+    case ('tempk')
+       call Brams2Post_tempk (varName, oneBramsGrid, onePostGrid)
+
+    case ('tveg')
+       call Brams2Post_tveg (varName, oneBramsGrid, onePostGrid)
+
+    case ('tke')
+       call Brams2Post_tke (varName, oneBramsGrid, onePostGrid)
+
+    case ('totpcp')
+       call Brams2Post_totpcp (varName, oneBramsGrid, onePostGrid)
+
+    case ('acccon')
+       call Brams2Post_acccon (varName, oneBramsGrid, onePostGrid)
+
+    case ('dewptc')
+       call Brams2Post_dewptc (varName, oneBramsGrid, onePostGrid)
+
+    case ('cloud')
+       call Brams2Post_cloud (varName, oneBramsGrid, onePostGrid)
+
+    case ('rshort')
+       call Brams2Post_rshort (varName, oneBramsGrid, onePostGrid)
+
+    case ('rlong')
+       call Brams2Post_rlong (varName, oneBramsGrid, onePostGrid)
+
+    case ('sea_press')
+       call Brams2Post_sea_press (varName, oneBramsGrid, onePostGrid)
+
+    case ('cape')
+       call Brams2Post_cape (varName, oneBramsGrid, onePostGrid)
+
+    case ('cine')
+       call Brams2Post_cine (varName, oneBramsGrid, onePostGrid)
+
+    case ('topo')
+       call Brams2Post_topo (varName, oneBramsGrid, onePostGrid)
+
+    case ('precip')
+       call Brams2Post_precip (varName, oneBramsGrid, onePostGrid)
+
+    case ('le')
+       call Brams2Post_le (varName, oneBramsGrid, onePostGrid)
+
+    case ('h')
+       call Brams2Post_h (varName, oneBramsGrid, onePostGrid)
+
+    case ('rv')
+       call Brams2Post_rv (varName, oneBramsGrid, onePostGrid)
+
+    case ('rlongup')
+       call Brams2Post_rlongup (varName, oneBramsGrid, onePostGrid)
+
+    case ('albedt')
+       call Brams2Post_albedt (varName, oneBramsGrid, onePostGrid)
+
+    case ('geo')
+       call Brams2Post_geo (varName, oneBramsGrid, onePostGrid)
+
+    case ('ue_avg')
+       call Brams2Post_ue_avg (varName, oneBramsGrid, onePostGrid)
+
+    case ('ve_avg')
+       call Brams2Post_ve_avg (varName, oneBramsGrid, onePostGrid)
+
+    case ('tempc2m')
+       call Brams2Post_tempc2m (varName, oneBramsGrid, onePostGrid)
+
+    case ('tempc')
+       call Brams2Post_tempc (varName, oneBramsGrid, onePostGrid)
+
+    case ('rh')
+       call Brams2Post_rh (varName, oneBramsGrid, onePostGrid)
+
+    case ('w')
+       call Brams2Post_w (varName, oneBramsGrid, onePostGrid)
+
+    case ('omeg')
+       call Brams2Post_omeg (varName, oneBramsGrid, onePostGrid)
+
+    case ('sst')
+       call Brams2Post_sst (varName, oneBramsGrid, onePostGrid)
+
+    case ('land')
+       call Brams2Post_land (varName, oneBramsGrid, onePostGrid)
+
+    case ('smoist')
+       call Brams2Post_smoist (varName, oneBramsGrid, onePostGrid)
+
+    case ('zi')
+       call Brams2Post_zi (varName, oneBramsGrid, onePostGrid)
+
+    case ('pwt')
+       call Brams2Post_pwt (varName, oneBramsGrid, onePostGrid)
+
+    case ('slp_metar')
+       call Brams2Post_slp_metar (varName, oneBramsGrid, onePostGrid)
+
+    case ('td2m')
+       call Brams2Post_td2m (varName, oneBramsGrid, onePostGrid)
+
+    case ('u10m')
+       call Brams2Post_u10m (varName, oneBramsGrid, onePostGrid)
+
+    case ('v10m')
+       call Brams2Post_v10m (varName, oneBramsGrid, onePostGrid)
+
+    case default
+       write(*,"(a)") "**(OnePostField)** Post field "//trim(varName)//" unknown to this procedure"
+    end select
+
+  end subroutine PostOneField
+end module ModPostOneField

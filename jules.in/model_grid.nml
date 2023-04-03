@@ -1,0 +1,47 @@
+&jules_input_grid
+grid_is_1d=.false.,
+nx=177,  !DSM nao utilizado - lendo do BRAMS
+ny=133,  !DSM nao utilizado - lendo do BRAMS
+x_dim_name='x',
+y_dim_name='y',
+grid_dim_name='land',
+time_dim_name='time',
+pft_dim_name='pft',
+cpft_dim_name='cpft'
+nvg_dim_name='nvg',
+type_dim_name='type',
+tile_dim_name='tile',
+soil_dim_name='soil',
+snow_dim_name='snow',
+scpool_dim_name='scpool',
+bedrock_dim_name='bedrock',
+/
+&jules_latlon
+nvars=2,
+read_from_dump=.false.,
+file='../from_BRAMS/grid_info_BRAMS.nc',  !DSM nao utilizado - lendo do BRAMS
+use_file=.true.,.true.,
+var='latitude','longitude',
+/
+&jules_land_frac
+file='../from_BRAMS/grid_info_BRAMS.nc',   !DSM nao utilizado - lendo do BRAMS
+land_frac_name='land_frac',
+/
+&jules_model_grid
+force_1d_grid=.false.,
+land_only=.false.,
+use_subgrid=.false.,
+/
+$jules_nlsizes
+bl_levels=1
+/
+&jules_surf_hgt
+zero_height=.true.,
+/
+$jules_z_land
+!!file=''
+!!surf_hgt_band=9*0.0
+!!use_file=.false.
+!!z_land_io=0.0
+!!z_land_name=''
+/

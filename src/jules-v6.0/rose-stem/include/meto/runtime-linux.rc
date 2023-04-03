@@ -1,0 +1,100 @@
+###############################################################################
+## Families for Met Office Linux systems
+###############################################################################
+# Family for Met Office Linux jobs
+    [[METO_LINUX]]
+        inherit = None, LINUX
+        pre-script = """
+                     module swap ifort ifort/16.0_64
+                     module switch nagfor nagfor/6.2.0_64
+                     module unload libraries/gcc
+                     module list 2>&1
+                     """
+        [[[job]]]
+            batch system = slurm
+            execution time limit = PT2M
+        [[[directives]]]
+            --export = NONE
+            --partition = rhel7
+
+# Family for Linux build jobs
+    [[METO_LINUX_BUILD]]
+        inherit = None, EXTRACT_AND_BUILD, METO_LINUX
+        [[[environment]]]
+            ROSE_TASK_N_JOBS = 4
+            PATH = /home/h01/frum/lib/ifort-16.0.1-gcc-4.8.5/mpi/mpich-3.2.1/bin:$PATH
+        [[[job]]]
+            execution time limit = PT15M
+        [[[directives]]]
+            --mem  = 2048
+            --ntasks = 2
+
+# Family for Met Office Linux compute jobs
+    [[METO_LINUX_COMPUTE]]
+        inherit = None, METO_LINUX, COMPUTE
+        [[[environment]]]
+            LOOBOS_INSTALL_DIR = /project/jules/rose-stem/loobos-data
+            GSWP2_INSTALL_DIR = /project/jules/benchmarking/data/gswp2
+            ERAINT_INSTALL_DIR = /project/jules/benchmarking/data/eraint
+            IMOGEN_INSTALL_DIR = /project/jules/benchmarking/data/imogen
+            ROSE_LAUNCHER_LIST = mpiexec.hydra
+        [[[job]]]
+            execution time limit = PT25M
+        [[[directives]]]
+            --mem  = 1024
+
+# Family for Met Office Linux comparison jobs
+    [[METO_LINUX_NETCDF_COMPARISON]]
+        inherit = None, METO_LINUX, NETCDF_COMPARISON
+        [[[environment]]]
+            KGO_DIR = /project/jules/rose-stem/jules-kgo/{{ KGO_VERSION }}
+            PATH = /home/h01/frum/lib/ifort-16.0.1-gcc-4.8.5/nccmp/nccmp-1.8.2.1/bin:$PATH
+        [[[job]]]
+            execution time limit = PT5M
+
+
+    [[METO_LINUX_1_TASK]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 1
+            NPROC = $MPI_NUM_TASKS
+        [[[directives]]]
+            --ntasks=1
+
+    [[METO_LINUX_4_TASKS]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 4
+            NPROC = $MPI_NUM_TASKS
+        [[[directives]]]
+            --ntasks=4
+
+    [[METO_LINUX_8_TASKS]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 8
+            NPROC = $MPI_NUM_TASKS
+        [[[directives]]]
+            --ntasks=8
+
+    [[METO_LINUX_12_TASKS]]
+        [[[environment]]]
+            MPI_NUM_TASKS = 12
+            NPROC = $MPI_NUM_TASKS
+        [[[directives]]]
+            --ntasks=12
+
+    [[METO_LINUX_1_THREAD]]
+        [[[environment]]]
+           OMP_NUM_THREADS = 1
+        [[[directives]]]
+           --cpus-per-task=1
+
+    [[METO_LINUX_2_THREADS]]
+        [[[environment]]]
+            OMP_NUM_THREADS = 2
+        [[[directives]]]
+           --cpus-per-task=2
+
+# Redefine site-independent SCRIPTS group
+    [[SCRIPTS]]
+        inherit = None, METO_LINUX
+        [[[job]]]
+            execution time limit = PT10M

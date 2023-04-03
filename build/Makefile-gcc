@@ -1,0 +1,196 @@
+#Makefile Make_model
+############################## Change Log ##################################
+# 4.3.0.1
+#
+############################################################################
+# Define path and compilation 
+
+
+.SUFFIXES: .C .f90 .F90 .c .o
+
+version        = 5.0.1
+PREFIX         = BRAMS-5.1
+HAVE_HDF5      = @HAVE_HDF5@
+HDF5LIB        = //comp/gnu/hdf5/lib/
+
+#CHEM	       = RELACS_TUV
+CHEM	       = RELACS_MX
+
+CCOMP	       = gcc
+CPCOMP	       = /comp/gnu/hdf5/bin/h5pcc
+FCOMP	       = gfortran 
+FPCOMP	       = /comp/gnu/hdf5/bin/h5pfc
+
+CMACH=       PC_LINUX1
+PAR_DEFS=    -DRAMS_MPI
+
+HAVE_ZLIB      = no
+ZLIB        = 
+
+ENABLEJULES = true
+
+MOD_EXT   = mod
+
+ZLIB_LIB =  -L$(ZLIB) -lz
+
+ARCHIVE=ar rs
+
+BINDIR = $(PREFIX)/bin
+
+PAR_INCS=./
+PAR_LIBS=./
+
+include paths.mk
+include objects_model.mk
+
+ifeq ($(ENABLEJULES), true)
+JULES_DEFS =-DJULES=1
+else
+JULES_DEFS =-DJULES=0
+JULESID    =
+JULES_DEFS =
+LIBJULES   =
+JULES_LIB  =
+JULES_INC  =
+endif
+
+#including ifs cumulus scheme
+ifeq ($(IFS), ifson)
+LIBIFS=ifs.a
+else
+LIBIFS=
+endif
+
+ifndef FPCOMP
+$(error You need to set the variable FPCOMP either in configure command line)
+endif
+
+ifeq ($(notdir $(FPCOMP)),mpif90)
+FC=$(FPCOMP) -f90=$(FCOMP)
+FC_LOADER=$(FC)
+	
+HDF5_LIB        = -L$(HDF5LIB)/lib -lhdf5hl_fortran -lhdf5_fortran -lhdf5_hl -lhdf5 $(ZLIB_LIB)
+HDF5_INC        = -I$(HDF5LIB)/include
+endif
+
+ifeq ($(notdir $(FPCOMP)),ftn)
+FC=$(FPCOMP) 
+FC_LOADER=$(FC)
+endif
+
+ifeq ($(notdir $(FPCOMP)),h5pfc)
+FC=$(FPCOMP) 
+
+FC_LOADER=$(FC) 
+endif
+
+
+ifeq ($(notdir $(FCOMP)),pgf90)
+#FC_FLAGS=-O0 -Mbounds -traceback  -D$(IFS) #-fast -O3 -fastsse -Munroll=n:4 -Mipa=fast,inline,safe  -Msmart 
+FC_FLAGS=  -D$(IFS) -O0 -Mbounds -traceback # -fast -O3 -fastsse -Munroll=n:4 -Mipa=fast,inline,safe  -Msmart 
+CCFLAGS=-O0
+FPP=-Mpreprocess
+endif 
+
+ifeq ($(notdir $(FCOMP)),ifort)
+FC_FLAGS=-O0 -m64  -D$(IFS) 
+CCFLAGS=-O3
+FPP=-fpp
+endif 
+
+ifeq ($(notdir $(FCOMP)),gfortran)
+FC_FLAGS=-O0 -g -fcheck=bounds  -fbacktrace  -Difsoff ###$(IFS) 
+CCFLAGS=-O3
+FPP=-cpp
+endif 
+
+FCFLAGS=$(FC_FLAGS) 
+
+
+LOADERFLAGS=$(FCFLAGS)
+
+
+## Define fancy Make  ###
+ifndef V
+	VERBOSE_FC = @printf '%b ' $(BOLD_BLUE)$(FC)$(NO_COLOUR) \
+	                           $(BOLD)$(FCFLAGS)$(NO_COLOUR) \
+	                           $(NO_COLOUR)$?$(NO_COLOUR)    \
+	                           $(CYAN)"=="$(NO_COLOUR)       \
+	                           $(GREEN) $@$ $(NO_COLOUR);   \
+	                           printf '\n'; 
+
+endif
+
+# Compiler commands.
+INCLUDES  = -I$(UTILS_INCS) $(JULES_INC) $(HDF5_INC)
+EXTRAFLAGSF = $(JULES_DEFS) $(INCLUDES) $(FCFLAGS) $(FPP)
+F_COMMAND = $(VERBOSE_FC) $(FC) -c  
+F_COMMAND_LIGHT = $(FPCOMP) -O0 -c
+
+# Define objects.
+include objects_model.mk
+
+# Define targets.
+
+all: $(EXE)
+
+$(EXE): libjules $(LIBUTILS) $(LIBIFS) $(LIBMODEL) $(MAINOBJ) 
+	@echo ""
+	$(FC_LOADER) -o $(EXE) rammain.o $(LOADERFLAGS) $(LIBMODEL) $(LIBUTILS) $(LIBIFS) $(JULES_LIB) -L$(PAR_LIBS) $(HDF5_LIB) 
+	@echo ""
+	@echo Finished building === $(EXE)
+	@echo ""
+
+$(MAINOBJ):  $(MAIN) 
+	@cp -f $< $(<F:.f90=.f90)
+	$(F_COMMAND) $(<F:.f90=.f90) $(EXTRAFLAGSF)
+	@rm -f $(<F:.f90=.f90) 
+
+$(LIBMODEL): $(OBJ_MODEL)
+	$(ARCHIVE) $(LIBMODEL) $(OBJ_MODEL) $(JULES_OBJ_SFCLYR) $(JULES_OBJ_MEM)
+
+$(LIBUTILS):
+	$(MAKE) -f Make_utils 
+
+$(LIBIFS):
+	$(MAKE) -f Make_ifs 
+
+libjules:
+#ifeq ($(ENABLEJULES), true)
+#	cd ../src/jules/LIB && $(MAKE) 
+#endif
+ifeq ($(notdir $(FCOMP)),gfortran-4.9)
+#	cp ../src/jules/LIB/SOURCE/MODULES/CONTROL/*.mod ../src/jules/LIB/MODS/
+#	cp ../src/jules/LIB/SOURCE/MODULES/PARAMS/*.mod ../src/jules/LIB/MODS/
+#	cp ../src/jules/LIB/SOURCE/SUBROUTINES/INITIALISATION/*.mod ../src/jules/LIB/MODS
+endif
+	
+clean:
+	$(MAKE) -f Make_utils  clean
+	$(MAKE) -f Make_ifs clean
+	#cd ../src/jules/LIB && $(MAKE) clean
+	rm -f $(OBJ_MODEL) $(MOD_MODEL) $(MAINOBJ) $(JULES_OBJ_SFCLYR) $(JULES_OBJ_MEM) $(EXE) $(LIBMODEL) *.oo
+
+install: 
+	install -D $(EXE) $(BINDIR)/$(notdir $(EXE))
+	\cp -f $(RAMS_ROOT)/jules.in $(BINDIR)/jules.in
+	\cp -rf $(RAMS_ROOT)/tables $(BINDIR)/tables
+	\cp -f $(RAMS_ROOT)/RAMSIN_5.1 $(BINDIR)/RAMSIN
+ 
+install-strip: 
+	install -D -s $(EXE) $(BINDIR)/$(notdir $(EXE))
+	\cp -f $(RAMS_ROOT)/jules.in $(BINDIR)/jules.in
+	\cp -rf $(RAMS_ROOT)/tables $(BINDIR)/tables
+	\cp -f $(RAMS_ROOT)/RAMSIN_5.1 $(BINDIR)/RAMSIN
+
+ 
+uninstall:
+	rm -f $(BINDIR)/$(notdir $(EXE))
+	rm -f $(BINDIR)/jules.in
+	rm -rf $(BINDIR)/tables
+	rm -f $(BINDIR)/RAMSIN
+	
+# Define dependencies
+include depend_model.mk
+
+.PHONY: all libjules install install-strip uninstall clean

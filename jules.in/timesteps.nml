@@ -1,0 +1,11 @@
+&jules_time
+l_360=.false.,
+l_leap=.true.,
+main_run_end='2010-01-03 23:00:00',    !DSM nao utilizado - lendo do BRAMS
+main_run_start='2010-01-03 00:00:00',  !DSM nao utilizado - lendo do BRAMS
+print_step=1,
+timestep_len=3600,                     !DSM nao utilizado - lendo do BRAMS
+/
+&jules_spinup
+max_spinup_cycles=0,
+/

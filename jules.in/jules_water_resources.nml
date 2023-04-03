@@ -1,0 +1,16 @@
+&jules_water_resources
+!!l_prioritise=.false.
+!!l_water_domestic=.false.
+!!l_water_environment=.false.
+!!l_water_industry=.false.
+!!l_water_irrigation=.false.
+!!l_water_livestock=.false.
+l_water_resources=.false.
+!!l_water_transfers=.false.
+!!nr_gwater_model=0
+!!nstep_water_res=1
+!!priority='irr'
+!!rf_domestic=0.1
+!!rf_industry=0.1
+!!rf_livestock=0.1
+/

@@ -1,0 +1,41 @@
+$ARGS_INPUT
+
+!!!!! DATE !!!!!
+
+init_year  = 2020,
+init_month = 12,
+init_day   = 01,
+init_hour  = 0,
+final_year = 2020,
+final_month= 12,
+final_day = 02,
+final_hour = 18,
+
+!!!!! TIME STEP !!!!!!!
+
+step  = 6, !Timestep in hours
+
+!!!!! ATMOS !!!!!
+atmos_type   = 2, !0=DP, 1=GFS Grib2, 2=ERA5
+atmos_prefix ='era5-',
+atmos_sufix  ='.nc',
+atmos_idir   ='/home/lufla/bin/datain/ERA5/',
+levels = 23,
+initial_latitude = -60., !initial latitude for domain of model (-90 to 90)  
+final_latitude  = 20., !final latitude for domain of model(-90 to 90)
+initial_longitude = 250., !initial longitude for domain of model (0 to 360)
+final_longitude = 358., !Final longitude for domain of model (0 to 360)
+
+!!!!! CHEM !!!!!! 
+chem_type     = 1, !0 = no Chem, 1 = CAMS 
+chem_idir  = "/home/lufla/bin/datafix_cams/",
+chem1_prefix ='',
+chem1_sufix  ='-CAMS-EC-2010-2019-AMS',
+
+!!!!! OUTPUT !!!!!
+out_type   = 2, !0=text, 1=VFM, 2=Grads
+out_prefix = 'IC',
+out_sufix  = '',
+out_dir    = '/home/lufla/bin/datain/GRADS/',
+	
+$END

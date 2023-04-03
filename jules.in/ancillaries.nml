@@ -1,0 +1,19 @@
+&jules_frac
+read_from_dump=.false.,
+file='../from_BRAMS/frac.nc',
+frac_name='frac'
+/
+&jules_soil_props
+const_val=6.63,0.049460,0.004715,0.458150,0.242433,0.136328,1185676.0, 0.226873,0.110000,
+const_z=.false.,
+file='../from_BRAMS/soil_ancil.nc',
+nvars=9,
+use_file=9*.false.,
+var='b','sathh','satcon','sm_sat','sm_crit','sm_wilt','hcap','hcon','albsoil',
+var_name='b','sathh','satcon','smsat','smcrit','smwilt','hcap','hcon','albsoil',
+/
+&jules_agric
+/
+&jules_co2
+co2_mmr=5.94100e-4
+/
